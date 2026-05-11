@@ -79,5 +79,22 @@ done
 curl -fsS "$HEALTH_URL" | head -c 200; echo
 echo "[deploy] OK"
 
-# 7. Cleanup old images > 7 ngày
-docker image prune -af --filter "until=168h" >/dev/null 2>&1 || true
+# 7. Cleanup local images — giữ current + 1 previous, drop phần còn lại của repo
+echo "[deploy] cleanup local images"
+REPO_REF="${ECR_REGISTRY}/${REPO_NAME}"
+KEEP_IDS=$(
+  {
+    docker images --format '{{.ID}}' "$REPO_REF" | head -2
+    docker images --format '{{.ID}}' tienthanh-api | head -1
+  } | sort -u
+)
+docker images --format '{{.ID}} {{.Repository}}:{{.Tag}}' "$REPO_REF" \
+  | while read -r id ref; do
+      if ! echo "$KEEP_IDS" | grep -q "$id"; then
+        echo "  drop $ref ($id)"
+        docker rmi -f "$ref" >/dev/null 2>&1 || true
+      fi
+    done
+# Dangling layers + buildcache (an toàn — không đụng tagged images đang dùng)
+docker image prune -f >/dev/null 2>&1 || true
+docker builder prune -af --filter "until=72h" >/dev/null 2>&1 || true

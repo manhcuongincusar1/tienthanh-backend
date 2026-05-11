@@ -72,12 +72,22 @@ jobs:
       name: production
       url: https://tienthanhapi.datviet.ai/health
     steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Sync deploy.sh to VPS
+        run: |
+          scp -i ~/.ssh/id_ed25519 deploy/deploy.sh \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/deploy.sh
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "sudo install -m 755 -o root -g root /tmp/deploy.sh /opt/tita-api/deploy.sh"
 
       - name: Deploy via SSH
         env:
