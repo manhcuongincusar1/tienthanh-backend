@@ -104,6 +104,67 @@ router.post('/presign', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// S5/05 — JSON variant của /view/:id. FE cần URL + expiresAt để auto-refresh
+// trước khi signed URL hết hạn (CloudFront signed URL TTL = 5 phút).
+// Auth giống /view: owner OR super_admin (private), all (public).
+router.get('/url/:id', auth.authenticateToken, async (req, res) => {
+  try {
+    const row = await mediaService.findById(req.params.id);
+    if (!row) {
+      return RestAPI.notFound(res, 'media_not_found');
+    }
+
+    const expiresAt = Date.now() + PRIVATE_VIEW_TTL_SEC * 1000;
+
+    if (row.visibility === 'public') {
+      const url = row.s3_key
+        ? mediaService.cdnUrl(row.s3_key, req.query.size || 'large')
+        : row.cdn_path;
+      if (!url) return RestAPI.notFound(res, 'no_url');
+      return RestAPI.success(res, {
+        url,
+        expires_at: row.s3_key ? expiresAt : null,
+        content_type: row.mime || null,
+        file_name: row.title || null,
+        visibility: 'public',
+      });
+    }
+
+    const userId = req.auth?.user_id;
+    const roleId = req.auth?.role_id;
+    const isOwner = Number(row.creator_id) === Number(userId);
+    const isAdmin = roleId === 1;
+    if (!isOwner && !isAdmin) {
+      return RestAPI.forbidden(res, 'forbidden');
+    }
+
+    let url;
+    if (cfSigner.isConfigured()) {
+      const size = req.query.size || 'large';
+      url = await cfSigner.signUrl({
+        path: `/${size}/${row.s3_key}`,
+        expiresInSec: PRIVATE_VIEW_TTL_SEC,
+      });
+    } else {
+      url = await s3Service.presignGet({
+        s3_key: row.s3_key,
+        expiresSec: PRIVATE_VIEW_TTL_SEC,
+      });
+    }
+
+    return RestAPI.success(res, {
+      url,
+      expires_at: expiresAt,
+      content_type: row.mime || null,
+      file_name: row.title || null,
+      visibility: 'private',
+    });
+  } catch (err) {
+    console.error('serve_file_url_error', err);
+    return RestAPI.serverError(res, Constants.MSG.SERVER_ERR, err);
+  }
+});
+
 // GET /_api/file/view/:id — serve media (redirect to CDN or signed URL).
 // Path `/view/:id` thay vì `/:id` để tránh conflict với `/upload`, `/presign`.
 router.get('/view/:id', auth.authenticateToken, async (req, res) => {
