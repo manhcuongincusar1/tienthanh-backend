@@ -9,7 +9,8 @@ const branchesService = require('../../services/branchesService');
 const userService = require('../../services/userService');
 const {Worker} = require("worker_threads");
 const ExcelJS = require("exceljs");
-const {httpGet} = require("../../request/httpRequest");
+const provinceService = require("../../services/provinceService");
+const districtService = require("../../services/districtService");
 router.get('/list', auth.authenticateToken, getSaleList);
 router.get('/check-sell', auth.authenticateToken, checkRangePriceSell);
 
@@ -56,26 +57,14 @@ const generateDataSale = async (req, res) => {
             limit: 100
         });
         const roleResult = await userService.getRole();
-        const provinceResult = await httpGet(
-            `${Constants.ADMINISTRATIVE_URL}/province/list`,
-            {
-                params: {
-                    limit: 100,
-                    search: province
-                },
-            },
-        );
-        const {data: listProvince} = provinceResult.data;
-        const districtResult = await httpGet(
-            `${Constants.ADMINISTRATIVE_URL}/district/list`,
-            {
-                params: {
-                    limit: 2000,
-                    province_id: _.first(listProvince).id,
-                },
-            },
-        );
-        const {data: listDistrict} = districtResult.data;
+        const {data: listProvince} = await provinceService.getList({
+            limit: 100,
+            keyword: province,
+        });
+        const {data: listDistrict} = await districtService.getList({
+            limit: 2000,
+            province_city_id: _.first(listProvince).id,
+        });
 
         const worksheet = wb.getWorksheet('Sheet1');
         let queryDB = ``;

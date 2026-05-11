@@ -1,0 +1,57 @@
+# TienThanh prod stack — Docker Compose.
+# Path: /opt/tita-api/docker-compose.yml
+# Lifecycle managed by systemd unit `tita-stack.service`.
+#
+# Env loaded from /opt/tita-api/.env (compose auto-loads same-dir .env).
+# Required keys:
+#   REDIS_PASSWORD             — Redis auth
+#   ECR_REGISTRY               — AWS account ECR URL (e.g. 996164348555.dkr.ecr.ap-southeast-1.amazonaws.com)
+#   TITA_IMAGE_TAG             — image tag to run (e.g. prod-abc123)
+# Other app env (POSTGRES_URL, S3_*, etc.) passed to app via env_file (.env itself).
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: tita-redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - ${REDIS_PASSWORD}
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    volumes:
+      - /opt/tita-api/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - tita-redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    mem_limit: 320m
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD PING || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # === App service ===
+  # Image: local build trên VPS lần đầu (tienthanh-api:local). Sau khi GHA wired
+  # → đổi sang ${ECR_REGISTRY}/tienthanh-api:${TITA_IMAGE_TAG}.
+  app:
+    image: ${TITA_IMAGE:-tienthanh-api:local}
+    container_name: tita-api
+    restart: unless-stopped
+    network_mode: host                 # share host net → reach PG/Redis via 127.0.0.1
+    env_file: /opt/tita-api/.env
+    mem_limit: 1g
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3002/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  tita-redis-data:

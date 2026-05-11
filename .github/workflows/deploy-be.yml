@@ -2,7 +2,7 @@ name: Deploy BE
 
 on:
   push:
-    branches: [main]
+    branches: [master, main]
     paths-ignore:
       - 'infra/**'
       - '.github/**'
@@ -50,7 +50,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: aws-actions/amazon-ecr-login@v2
-        id: ecr
 
       - name: Build + push
         uses: docker/build-push-action@v6
@@ -59,6 +58,7 @@ jobs:
           file: Dockerfile
           push: true
           provenance: false
+          platforms: linux/amd64
           tags: |
             ${{ secrets.ECR_REPO_URL }}:${{ steps.meta.outputs.tag }}
             ${{ secrets.ECR_REPO_URL }}:latest
@@ -72,49 +72,6 @@ jobs:
       name: production
       url: https://tienthanhapi.datviet.ai/health
     steps:
-      - uses: actions/checkout@v4
-
-      # Render .env từ secrets — KHÔNG echo content ra log.
-      - name: Render .env
-        env:
-          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          APP_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_APP }}
-          APP_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY_APP }}
-          CF_KEY_PAIR_ID: ${{ secrets.CF_KEY_PAIR_ID }}
-          CF_PRIVATE_KEY: ${{ secrets.CF_PRIVATE_KEY }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-        run: |
-          umask 077
-          cat > .env.production <<EOF
-          NODE_ENV=production
-          PORT=3002
-          TZ=Asia/Ho_Chi_Minh
-
-          POSTGRES_URL=$POSTGRES_URL
-          PG_POOL_MAX=20
-          PG_POOL_MIN=4
-
-          REDIS_URL=$REDIS_URL
-          USE_REDIS_CACHE=true
-
-          AWS_REGION=${{ env.AWS_REGION }}
-          AWS_ACCESS_KEY_ID=$APP_KEY_ID
-          AWS_SECRET_ACCESS_KEY=$APP_SECRET
-          S3_KEY=$APP_KEY_ID
-          S3_SECRET=$APP_SECRET
-          S3_BUCKET=$S3_BUCKET
-
-          CDN_BASE=https://tienthanhcdn.datviet.ai
-          CF_KEY_PAIR_ID=$CF_KEY_PAIR_ID
-          CF_PRIVATE_KEY=$CF_PRIVATE_KEY
-
-          SES_FROM=noreply@tienthanh.datviet.ai
-          FRONTEND_URL=https://tienthanh.datviet.ai
-          ENABLE_CRON=1
-          LOG_LEVEL=info
-          EOF
-
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -122,26 +79,20 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Upload .env
-        run: |
-          scp -i ~/.ssh/id_ed25519 \
-            .env.production \
-            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/tita-api/.env.new
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "sudo mv /opt/tita-api/.env.new /opt/tita-api/.env && sudo chown tita:tita /opt/tita-api/.env && sudo chmod 600 /opt/tita-api/.env"
-
-      - name: Deploy
+      - name: Deploy via SSH
         env:
           IMAGE_TAG: ${{ needs.build-push.outputs.image_tag }}
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
         run: |
           ssh -i ~/.ssh/id_ed25519 \
             ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-            "sudo AWS_REGION=${{ env.AWS_REGION }} \
-             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_DEPLOYER }} \
-             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_DEPLOYER }} \
-             ECR_REGISTRY=$(echo '${{ secrets.ECR_REPO_URL }}' | cut -d/ -f1) \
-             TITA_IMAGE_TAG=$IMAGE_TAG \
-             /opt/tita-api/deploy.sh"
+            "sudo -E env \
+               TITA_IMAGE_TAG='$IMAGE_TAG' \
+               ECR_REGISTRY='$ECR_REGISTRY' \
+               AWS_REGION='${{ env.AWS_REGION }}' \
+               AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID_DEPLOYER }}' \
+               AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY_DEPLOYER }}' \
+               /opt/tita-api/deploy.sh"
 
       - name: External health check
         run: |

@@ -1,0 +1,24 @@
+[Unit]
+Description=TienThanh app stack (docker compose)
+Documentation=https://github.com/tienthanh-org
+Requires=docker.service
+After=docker.service network-online.target postgresql@15-main.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/opt/tita-api
+EnvironmentFile=/opt/tita-api/.env
+
+# Pull latest image cho services có `image:` từ remote (no-op nếu local-only).
+ExecStartPre=-/usr/bin/docker compose -f /opt/tita-api/docker-compose.yml pull --ignore-pull-failures
+
+ExecStart=/usr/bin/docker compose -f /opt/tita-api/docker-compose.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f /opt/tita-api/docker-compose.yml down
+
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

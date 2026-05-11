@@ -1,164 +1,87 @@
+// Ward CRUD route — in-process implementation (no HTTP proxy to admin service).
 const express = require('express');
 const _ = require('lodash');
 const router = express.Router();
 const RestAPI = require('../../common/rest_api');
 const Constants = require('../../common/constants');
 const Authentication = require('../../middlewares/auth');
-const {httpGet, httpPost} = require('../../request/httpRequest');
 const permission = require('../../middlewares/permission');
 const checkInvalidBranch = require('../../middlewares/checkInvalidBranch');
+const wardService = require('../../services/wardService');
 
-const getWardList = async (req, res, next) => {
-  let {query} = req;
-
-  const result = await httpGet(`${Constants.ADMINISTRATIVE_URL}/ward/list`, {
-    params: query,
-  });
-
-  const {data, total} = result.data;
-
-  let dataWard = [];
-  if (!_.isEmpty(data)) {
-    _.each(data, (ward) => {
-      dataWard.push({
-        ...ward,
-        display_status:
-          ward.status == Constants.STATUS_ENUM.ACTIVE ? true : false,
-      });
-    });
-  }
-
-  return RestAPI.success(res, dataWard, {
-    total,
-  });
+const handleBizError = (res, err) => {
+  if (err && err.status) return RestAPI.badRequest(res, err.message);
+  console.log(err);
+  return RestAPI.serverError(res, 'Internal server error');
 };
 
-/**
- * It makes a POST request to the administrative service to create a ward
- * @param req - The request object
- * @param res - response object
- * @param next - The next middleware function in the stack.
- */
-const createWard = async (req, res, next) => {
+const decorateDisplay = (row) => ({
+  ...row,
+  display_status: row.status == Constants.STATUS_ENUM.ACTIVE,
+});
+
+const getWardList = async (req, res) => {
   try {
-    const result = await httpPost(
-      `${Constants.ADMINISTRATIVE_URL}/ward/create`,
-      {
-        ...req.body,
-      },
-    );
-
-    const {status, message} = result.data;
-    if (status !== 200) {
-      return RestAPI.badRequest(res, message);
-    }
-    return RestAPI.success(res, message);
-  } catch (e) {
-    const {status, message} = e.response.data;
-    return RestAPI.badRequest(res, message);
+    const {data, total} = await wardService.getList(req.query);
+    return RestAPI.success(res, data.map(decorateDisplay), {total});
+  } catch (err) {
+    return handleBizError(res, err);
   }
 };
 
-/**
- * It updates the active/deactive status of a Ward.
- * @param req - The request object.
- * @param res - The response object.
- * @param next - The next middleware function in the stack.
- */
-const updateActiveDeActiveWard = async (req, res, next) => {
-  let {id} = req.params;
-  let {status: updateStatus} = req.body;
-  const result = await httpPost(
-    `${Constants.ADMINISTRATIVE_URL}/ward/active-deactive/${id}`,
-    {
-      status: updateStatus,
-    },
-  );
-  const {status, message} = result.data;
-  if (status !== 200) {
-    return RestAPI.serverError(res, 'Internal server error');
-  }
-  return RestAPI.success(res, message);
-};
-
-/**
- * This function is used to get the detail of a ward by id.
- * @param req - request object
- * @param res - response object
- * @param next - The next middleware function in the stack.
- */
-const detailWard = async (req, res, next) => {
-  let {id} = req.params;
-  const result = await httpGet(
-    `${Constants.ADMINISTRATIVE_URL}/ward/detail/${id}`,
-  );
-  const {status, message} = result.data;
-  if (status !== 200) {
-    return RestAPI.serverError(res, 'Internal server error');
-  }
-  return RestAPI.success(res, message);
-};
-
-/**
- * It updates a ward
- * @param req - The request object
- * @param res - response object
- * @param next - This is the next middleware function in the stack.
- */
-const updateWard = async (req, res, next) => {
-  let {id} = req.params;
-  let {code, title, status: updateStatus} = req.body;
+const detailWard = async (req, res) => {
   try {
-    const result = await httpPost(
-      `${Constants.ADMINISTRATIVE_URL}/ward/update/${id}`,
-      {
-        ...req.body,
-      },
-    );
-    const {status, message} = result.data;
-    if (status !== 200) {
-      return RestAPI.serverError(res, 'Internal server error');
-    }
-    return RestAPI.success(res, message);
-  } catch (e) {
-    const {status, message} = e.response.data;
-    return RestAPI.badRequest(res, message);
+    const row = await wardService.getDetail(req.params.id);
+    if (!row) return RestAPI.notFound(res, 'Ward not found');
+    return RestAPI.success(res, row);
+  } catch (err) {
+    return handleBizError(res, err);
   }
 };
 
-const deleteWard = async (req, res, next) => {
-  let {id} = req.params;
+const createWard = async (req, res) => {
   try {
-    const result = await httpPost(
-      `${Constants.ADMINISTRATIVE_URL}/ward/delete/${id}`,
-    );
-    const {status, message} = result.data;
-    if (status !== 200) {
-      return RestAPI.serverError(res, 'Internal server error');
-    }
-    return RestAPI.success(res, message);
-  } catch (e) {
-    const {message} = e.response.data;
-    return RestAPI.badRequest(res, message);
+    const row = await wardService.create(req.body);
+    return RestAPI.success(res, row);
+  } catch (err) {
+    return handleBizError(res, err);
   }
 };
 
-/**
- * This function is used to get check if the code already existed in Ward
- * @param req - request object
- * @param res - response object
- * @param next - The next middleware function in the stack.
- */
-const checkCodeExistWard = async (req, res, next) => {
-  let {code} = req.params;
-  const result = await httpGet(
-    `${Constants.ADMINISTRATIVE_URL}/ward/code-exist/${code}`,
-  );
-  const {status, message, data} = result.data;
-  if (status !== 200) {
-    return RestAPI.serverError(res, 'Internal server error');
+const updateWard = async (req, res) => {
+  try {
+    const row = await wardService.update(req.params.id, req.body);
+    return RestAPI.success(res, row);
+  } catch (err) {
+    return handleBizError(res, err);
   }
-  return RestAPI.success(res, data);
+};
+
+const updateActiveDeActiveWard = async (req, res) => {
+  try {
+    const row = await wardService.setActive(req.params.id, req.body.status);
+    return RestAPI.success(res, row);
+  } catch (err) {
+    return handleBizError(res, err);
+  }
+};
+
+const deleteWard = async (req, res) => {
+  try {
+    await wardService.remove(req.params.id);
+    return RestAPI.success(res, 'Deleted');
+  } catch (err) {
+    return handleBizError(res, err);
+  }
+};
+
+const checkCodeExistWard = async (req, res) => {
+  try {
+    const exists = await wardService.codeExists(req.params.code);
+    return RestAPI.success(res, exists);
+  } catch (err) {
+    return handleBizError(res, err);
+  }
 };
 
 router.get('/list', Authentication.authenticateToken, getWardList);

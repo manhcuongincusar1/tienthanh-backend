@@ -99,7 +99,7 @@ new aws.sns.TopicSubscription("alert-telegram", {
 
 // === Alarms ===
 new aws.cloudwatch.MetricAlarm("lambda-image-resize-errors", {
-  alarmName: "tienthanh-image-resize-error-rate",
+  name: "tienthanh-image-resize-error-rate",
   alarmDescription: "Lambda image resize errors > 5 trong 5 phút",
   comparisonOperator: "GreaterThanThreshold",
   evaluationPeriods: 1,
@@ -116,7 +116,7 @@ new aws.cloudwatch.MetricAlarm("lambda-image-resize-errors", {
 });
 
 new aws.cloudwatch.MetricAlarm("lambda-image-resize-duration", {
-  alarmName: "tienthanh-image-resize-duration-p99",
+  name: "tienthanh-image-resize-duration-p99",
   alarmDescription: "Lambda image resize duration > 20s",
   comparisonOperator: "GreaterThanThreshold",
   evaluationPeriods: 3,

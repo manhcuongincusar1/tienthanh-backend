@@ -9,7 +9,7 @@ config:
   tienthanh-api:feDomain: tienthanh.datviet.ai
   tienthanh-api:cdnDomain: tienthanhcdn.datviet.ai
   tienthanh-api:sesDomain: tienthanh.datviet.ai
-  tienthanh-api:vpsIp: 0.0.0.0          # REPLACE sau khi provision (runbook_01)
+  tienthanh-api:vpsIp: 47.82.161.217 # REPLACE sau khi provision (runbook_01)
   tienthanh-api:appDataBucketName: tienthanh-app-data
   tienthanh-api:backupBucketName: tienthanh-backups
   tienthanh-api:ecrRepoName: tienthanh-api

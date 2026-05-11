@@ -4,9 +4,9 @@ const IS_DEV =
 const MAIL_CONSTANT = require('../common/constants/mail');
 const ROLES_CONSTANT = require('../common/constants/roles');
 const REAL_ESTATE_CONSTANT = require('../common/constants/real_estate');
-const ADMINISTRATIVE_URL = process.env.ADMINISTRATIVE_URL
-  ? process.env.ADMINISTRATIVE_URL
-  : 'http://0.0.0.0:3011';
+// ADMINISTRATIVE_URL legacy microservice (port 3011) — đã inline vào
+// services/{province,district,ward,street}Service.js. Giữ env var để env file cũ
+// không vỡ (Constants.ADMINISTRATIVE_URL bị xoá khỏi mọi callsite).
 const DOMAIN_URL = process.env.DOMAIN_URL
   ? process.env.DOMAIN_URL
   : 'localhost:8000';
@@ -24,7 +24,6 @@ const Constants = {
   DEFAULT_PASSWORD:
     '9145df64c38e9fe27b19a8fc1ce1b2359768d46bfd347f56d14762bd8642797b', //Tienthanh123
   DEFAULT_PASSWORD_RAW: 'Tienthanh123',
-  ADMINISTRATIVE_URL: `${ADMINISTRATIVE_URL}/_api`,
   FO_DOMAIN_URL: process.env.FO_DOMAIN_URL ?? 'http://localhost:8000/cms',
   DOMAIN_INFO: DOMAIN_URL,
   CRON: {

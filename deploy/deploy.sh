@@ -1,67 +1,74 @@
 #!/usr/bin/env bash
-# Deploy script chạy trên VPS, được gọi từ GHA task 11.
-# Idempotent. Rollback bằng cách re-run với TITA_IMAGE_TAG cũ.
+# Deploy script — chạy NHƯ ROOT trên VPS qua `sudo -E /opt/tita-api/deploy.sh`.
+# Gọi từ GHA `deploy-be.yml`. Compose pattern: pull ECR image → update TITA_IMAGE
+# trong /opt/tita-api/.env → systemctl restart tita-stack → health check.
 #
-# Usage (local SSH debug):
-#   sudo TITA_IMAGE_TAG=prod-abc1234 /opt/tita-api/deploy.sh
-#
-# Env required (GHA truyền qua SSH):
-#   TITA_IMAGE_TAG      — tag git SHA (vd "prod-abc1234")
+# Env required:
+#   TITA_IMAGE_TAG      — eg "prod-20260511-abc1234"
 #   ECR_REGISTRY        — eg "<acct>.dkr.ecr.ap-southeast-1.amazonaws.com"
 #   AWS_REGION          — ap-southeast-1
-#   AWS_ACCESS_KEY_ID   — deployer key (cho ecr get-login-password)
+#   AWS_ACCESS_KEY_ID   — deployer key
 #   AWS_SECRET_ACCESS_KEY
 
 set -euo pipefail
 
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "ERROR: must run as root (use sudo -E)"; exit 1
+fi
+
 : "${TITA_IMAGE_TAG:?TITA_IMAGE_TAG required}"
 : "${ECR_REGISTRY:?ECR_REGISTRY required}"
 : "${AWS_REGION:=ap-southeast-1}"
+: "${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID required}"
+: "${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY required}"
+
+export AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 
 REPO_NAME="${REPO_NAME:-tienthanh-api}"
 NEW_IMAGE="${ECR_REGISTRY}/${REPO_NAME}:${TITA_IMAGE_TAG}"
+ENV_FILE="/opt/tita-api/.env"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3002/health}"
-RUNTIME_ENV="/etc/tita-api/runtime.env"
 
-echo "[deploy] target image: $NEW_IMAGE"
+echo "[deploy] target: $NEW_IMAGE"
 
 # 1. ECR login
 aws ecr get-login-password --region "$AWS_REGION" \
   | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-# 2. Pull new image
+# 2. Pull
 echo "[deploy] pulling..."
 docker pull "$NEW_IMAGE"
 
-# 3. Capture previous image (rollback)
-PREV_IMAGE=$(grep '^TITA_IMAGE=' "$RUNTIME_ENV" 2>/dev/null | cut -d= -f2- || echo "")
+# 3. Snapshot previous TITA_IMAGE
+PREV_IMAGE=$(grep '^TITA_IMAGE=' "$ENV_FILE" 2>/dev/null | cut -d= -f2- || echo "")
 echo "[deploy] previous: ${PREV_IMAGE:-<none>}"
 
-# 4. Update runtime.env atomic
-sudo mkdir -p /etc/tita-api
-sudo tee "$RUNTIME_ENV.tmp" >/dev/null <<EOF
-TITA_IMAGE=$NEW_IMAGE
-TITA_IMAGE_TAG=$TITA_IMAGE_TAG
-DEPLOYED_AT=$(date -Is)
-EOF
-sudo mv "$RUNTIME_ENV.tmp" "$RUNTIME_ENV"
+# 4. Atomic update TITA_IMAGE
+TMP=$(mktemp)
+cp "$ENV_FILE" "$TMP"
+if grep -q '^TITA_IMAGE=' "$TMP"; then
+  sed -i "s|^TITA_IMAGE=.*|TITA_IMAGE=$NEW_IMAGE|" "$TMP"
+else
+  echo "TITA_IMAGE=$NEW_IMAGE" >> "$TMP"
+fi
+mv "$TMP" "$ENV_FILE"
+chmod 600 "$ENV_FILE"
 
-# 5. Restart systemd unit (graceful drain qua docker stop -t 30)
-sudo systemctl daemon-reload
-sudo systemctl restart tita-api
+# 5. Restart compose stack
+systemctl restart tita-stack.service
 
-# 6. Health check (30s window)
+# 6. Health check 60s window
 echo "[deploy] waiting for healthy..."
-for i in $(seq 1 30); do
+for i in $(seq 1 60); do
   if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
     echo "[deploy] healthy after ${i}s"
     break
   fi
-  if [ "$i" = "30" ]; then
-    echo "[deploy] health check FAILED after 30s — rolling back"
+  if [ "$i" = "60" ]; then
+    echo "[deploy] health FAIL — rolling back"
     if [ -n "$PREV_IMAGE" ]; then
-      sudo sed -i "s|^TITA_IMAGE=.*|TITA_IMAGE=$PREV_IMAGE|" "$RUNTIME_ENV"
-      sudo systemctl restart tita-api
+      sed -i "s|^TITA_IMAGE=.*|TITA_IMAGE=$PREV_IMAGE|" "$ENV_FILE"
+      systemctl restart tita-stack.service
       echo "[deploy] rolled back to $PREV_IMAGE"
     fi
     exit 1
@@ -69,10 +76,8 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-# 7. Smoke
-curl -fsS "$HEALTH_URL" | head -c 200
-echo
+curl -fsS "$HEALTH_URL" | head -c 200; echo
 echo "[deploy] OK"
 
-# 8. Cleanup: giữ 3 image cuối trên local disk.
-docker image prune -af --filter "until=168h"  # > 7 ngày
+# 7. Cleanup old images > 7 ngày
+docker image prune -af --filter "until=168h" >/dev/null 2>&1 || true
