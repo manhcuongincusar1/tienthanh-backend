@@ -1,0 +1,1 @@
+alter table real_estate add column full_address text default null;

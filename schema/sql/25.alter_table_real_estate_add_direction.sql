@@ -1,0 +1,1 @@
+alter table real_estate add column direction varchar(100) default null;

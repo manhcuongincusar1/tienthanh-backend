@@ -1,0 +1,1 @@
+alter table real_estate add column location integer default null

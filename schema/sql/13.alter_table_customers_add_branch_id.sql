@@ -1,0 +1,1 @@
+alter table customers add branch_id uuid default null

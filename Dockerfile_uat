@@ -1,0 +1,14 @@
+ARG TAG=qat
+FROM globalmpire/tita-node-api-deps:$TAG as builder
+WORKDIR /app
+
+# add app
+COPY . /app
+
+#RUN npm start
+CMD ["npm","start"]
+
+#FROM nginx:alpine
+
+#COPY --from=builder /app/dist/ /usr/share/nginx/html/
+#COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf

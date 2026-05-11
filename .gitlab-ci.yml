@@ -1,0 +1,110 @@
+image: docker:latest
+services:
+  - docker:dind
+
+before_script:
+  - "export CI_PROJECT_VERSION=`echo $CI_COMMIT_REF_NAME | cut -d'-' -f 2,3`"
+  - "echo CI_PROJECT_VERSION: $CI_COMMIT_REF_NAME --\\> $CI_PROJECT_VERSION"
+  - "export DOCKER_REGISTRY_SERVER=docker.io"
+  - "export DOCKER_REGISTRY_NAMESPACE=/globalmpire"
+  - "echo DOCKER_REGISTRY_NAMESPACE: $DOCKER_REGISTRY_NAMESPACE"
+
+after_script:
+  - echo "After script section"
+
+stages:
+  - docker-build-deps
+  - docker-build-web
+
+qat-docker-build-dependencies:
+  stage: docker-build-deps
+  services:
+    - docker:dind
+  only:
+    - development
+  script:
+    - whoami && pwd && date
+    - docker build --force-rm -f Dockerfile_deps -t $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api-deps:qat .
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+    - docker push $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api-deps:qat
+  tags:
+    - docker
+  when: manual
+
+qat-docker-build:
+  stage: docker-build-web
+  services:
+    - docker:dind
+  only:
+    - development
+  script:
+    - whoami && pwd && date
+    - apk add --no-cache curl jq python3 py3-pip
+    - pip install awscli
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+#    - aws s3 sync ./swagger/ s3://qat-hk-swagger/ --acl public-read
+    - docker build --force-rm -f Dockerfile_qat -t $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api:qat .
+    - docker push $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api:qat
+  tags:
+    - docker
+  when: manual
+
+uat-docker-build-dependencies:
+  stage: docker-build-deps
+  services:
+    - docker:dind
+  only:
+    - /^uat.*$/
+  script:
+    - whoami && pwd && date
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+    - docker build --force-rm -f Dockerfile_deps -t $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api-deps:$CI_PROJECT_VERSION .
+    - docker push $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api-deps:$CI_PROJECT_VERSION
+  tags:
+    - docker
+  when: manual
+
+uat-docker-build:
+  stage: docker-build-web
+  services:
+    - docker:dind
+  only:
+    - /^uat.*$/
+  script:
+    - whoami && pwd && date
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+    - docker build --build-arg TAG=$CI_PROJECT_VERSION --force-rm -f Dockerfile_uat -t $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api:$CI_PROJECT_VERSION .
+    - docker push $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api:$CI_PROJECT_VERSION
+  tags:
+    - docker
+  when: manual
+
+prod-docker-build-dependencies:
+  stage: docker-build-deps
+  services:
+    - docker:dind
+  only:
+    - /^prod.*$/
+  script:
+    - whoami && pwd && date
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+    - docker build --force-rm -f Dockerfile_deps -t $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api-deps:prod .
+    - docker push $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api-deps:prod
+  tags:
+    - docker
+  when: manual
+
+prod-docker-build:
+  stage: docker-build-web
+  services:
+    - docker:dind
+  only:
+    - /^prod.*$/
+  script:
+    - whoami && pwd && date
+    - docker login -u $DOCKER_REGISTRY_USERNAME -p $DOCKER_REGISTRY_PASSWORD
+    - docker build --build-arg TAG=prod --force-rm -f Dockerfile_uat -t $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api:$CI_PROJECT_VERSION .
+    - docker push $DOCKER_REGISTRY_SERVER${DOCKER_REGISTRY_NAMESPACE}/tita-node-api:$CI_PROJECT_VERSION
+  tags:
+    - docker
+  when: manual

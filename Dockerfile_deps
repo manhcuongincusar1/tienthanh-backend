@@ -1,0 +1,12 @@
+FROM node:lts-alpine3.15
+
+# set working directory
+WORKDIR /app
+
+RUN apk add --no-cache zip
+
+# add app
+COPY ./package.json /app
+# COPY ./package-lock.json /app
+
+RUN npm install

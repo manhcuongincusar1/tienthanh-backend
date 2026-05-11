@@ -1,0 +1,1 @@
+ALTER TABLE ONLY users add COLUMN update_password timestamp with time zone DEFAULT null;

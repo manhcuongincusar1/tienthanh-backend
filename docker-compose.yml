@@ -1,0 +1,33 @@
+version: '3.3'
+services:
+  db:
+    image: postgres:14.3
+    container_name: tita_db
+    restart: always
+    ports:
+      - '5432:5432'
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+      - ./init_schema:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_PASSWORD: 123qwe
+      POSTGRES_USER: tita
+      POSTGRES_DB: tita
+  mongodb:
+    image: mongo:5.0.9
+    restart: always
+    ports:
+      - '27017:27017'
+    volumes:
+      - ./dbdata:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: tita
+  administrative_nodes:
+    image: globalmpire/administrative-unit-node-api:qat
+    container_name: administrative_unit_node
+    ports:
+      - 3011:3002
+    environment:
+      POSTGRES_URL: postgresql://tita:123qwe@tita_db:5432/tita
+    links:
+      - db:db

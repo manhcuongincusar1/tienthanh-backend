@@ -1,0 +1,1 @@
+alter table roles add column type integer default null

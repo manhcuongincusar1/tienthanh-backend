@@ -1,0 +1,1 @@
+alter table import_queue add branch_id uuid default null;

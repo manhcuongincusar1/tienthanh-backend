@@ -1,0 +1,1 @@
+alter table sales add type integer default null

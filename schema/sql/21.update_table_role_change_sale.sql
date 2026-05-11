@@ -1,0 +1,1 @@
+update roles set role = 'sale' where role = 'sales'

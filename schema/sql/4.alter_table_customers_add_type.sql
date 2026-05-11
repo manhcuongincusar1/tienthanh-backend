@@ -1,0 +1,1 @@
+alter table customers add type integer DEFAULT null
