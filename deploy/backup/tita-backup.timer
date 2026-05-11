@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Tita PG backup timer
+
+[Timer]
+# Mỗi ngày 03:30 Asia/Ho_Chi_Minh
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

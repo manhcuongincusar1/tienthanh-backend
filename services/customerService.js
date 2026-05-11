@@ -465,41 +465,48 @@ class CustomService extends BaseService {
             phone_number_sub_list?.length > 0 &&
             _.isArray(phone_number_sub_list)
           ) {
-            phone_number_sub_list.forEach(async (phone_number_item) => {
-              if (
-                phone_number_item &&
-                phone_number_item?.id &&
-                phone_number_item.status !== 0
-              ) {
-                await knexPG('customer_phones')
-                  .transacting(trx)
-                  .where('customer_phones.id', phone_number_item.id)
-                  .update({
-                    phone_number: phone_number_item.phone_number,
-                    status: phone_number_item.status,
-                  })
-                  .returning('customer_phones.customer_id')
-                  .catch((err) => {
-                    console.log(err);
-                  });
-              } else if (
-                phone_number_item?.phone_number &&
-                (phone_number_item.status === 0 || !phone_number_item.status)
-              ) {
-                await knexPG('customer_phones')
-                  .transacting(trx)
-                  .insert({
-                    phone_number: phone_number_item.phone_number,
-                    customer_id: customer_id,
-                    is_main: false,
-                    status: Constants.STATUS_ENUM.ACTIVE,
-                  })
-                  .returning('customer_phones.customer_id')
-                  .catch((err) => {
-                    console.log(err);
-                  });
-              }
-            });
+            const phoneChunks = _.chunk(phone_number_sub_list, 50);
+            for (const phoneBatch of phoneChunks) {
+              await Promise.all(
+                phoneBatch.map((phone_number_item) => {
+                  if (
+                    phone_number_item &&
+                    phone_number_item?.id &&
+                    phone_number_item.status !== 0
+                  ) {
+                    return knexPG('customer_phones')
+                      .transacting(trx)
+                      .where('customer_phones.id', phone_number_item.id)
+                      .update({
+                        phone_number: phone_number_item.phone_number,
+                        status: phone_number_item.status,
+                      })
+                      .returning('customer_phones.customer_id')
+                      .catch((err) => {
+                        console.log(err);
+                      });
+                  } else if (
+                    phone_number_item?.phone_number &&
+                    (phone_number_item.status === 0 ||
+                      !phone_number_item.status)
+                  ) {
+                    return knexPG('customer_phones')
+                      .transacting(trx)
+                      .insert({
+                        phone_number: phone_number_item.phone_number,
+                        customer_id: customer_id,
+                        is_main: false,
+                        status: Constants.STATUS_ENUM.ACTIVE,
+                      })
+                      .returning('customer_phones.customer_id')
+                      .catch((err) => {
+                        console.log(err);
+                      });
+                  }
+                  return undefined;
+                }),
+              );
+            }
           }
         })
         .then(() => {

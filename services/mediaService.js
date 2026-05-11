@@ -1,41 +1,41 @@
 const BaseService = require('./baseService');
-const knexPG = require('../db/connectKnex');
-const _ = require('lodash');
-const Common = require('../common/common');
+const mediaRepo = require('./repositories/mediaRepo');
+
+// CDN domain — DECISIONS D4. Override qua env nếu cần per-env.
+const CDN_BASE =
+  process.env.CDN_BASE_URL || 'https://tienthanhcdn.datviet.ai';
 
 class MediaService extends BaseService {
-  insertMedia = async (data) => {
-    const {path, extension, title, cdn_path} = data;
+  // Legacy insert — backward-compat cho FE đang dùng `/upload` (multer S3).
+  insertMedia = async (data) => mediaRepo.insertLegacy(data);
 
-    const response = await knexPG('media')
-      .insert({
-        path: path,
-        extension: extension,
-        title: title,
-        cdn_path: cdn_path,
-        status: 1,
-      })
-      .returning(['id', 'path', 'cdn_path']);
+  insertMultipleMedia = async (data) => mediaRepo.insertManyLegacy(data);
 
-    if (!response) {
-      return false;
-    }
-    return response[0];
-  };
-  insertMultipleMedia = async (data) => {
-    const newDataInsert = data.map((value) => ({
-      path: value.path,
-      extension: value.extension,
-      title: value.title,
-      status: 1,
-    }));
-    const response = await knexPG('media')
-      .insert(newDataInsert)
-      .returning(['id', 'path']);
-    if (!response) {
-      return false;
-    }
-    return response;
+  // New schema insert — presigned flow.
+  insertV2 = async (data) => mediaRepo.insertV2(data);
+
+  findById = async (id) => mediaRepo.findById(id);
+
+  findByS3Key = async (s3_key) => mediaRepo.findByS3Key(s3_key);
+
+  // FE construct URL trực tiếp từ s3_key — BE chỉ giúp khi response API legacy.
+  // Variant per DECISIONS D6: chỉ `thumbnail` + `large`.
+  cdnUrl = (s3_key, size = 'large') => `${CDN_BASE}/${size}/${s3_key}`;
+
+  // Public response shape — fill cả URL mới + cdn_path legacy.
+  toPublicShape = (row) => {
+    if (!row) return null;
+    const large = row.s3_key ? this.cdnUrl(row.s3_key, 'large') : null;
+    const thumbnail = row.s3_key ? this.cdnUrl(row.s3_key, 'thumbnail') : null;
+    return {
+      id: Number(row.id),
+      s3_key: row.s3_key,
+      mime: row.mime,
+      visibility: row.visibility,
+      thumbnail_url: thumbnail,
+      large_url: large,
+      cdn_path: row.cdn_path || large, // legacy FE chưa update
+    };
   };
 }
 

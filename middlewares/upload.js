@@ -57,7 +57,17 @@ const fileFilter = (req, file, cb) => {
 
 class Upload {
   static uploadFile() {
-    const upload = multer({storage: storageFile, fileFilter: fileFilter});
+    const upload = multer({
+      storage: storageFile,
+      fileFilter: fileFilter,
+      // DECISIONS D1: limit consistent với common/uploadMiddleware.
+      limits: {
+        fileSize: Constants.LIMIT_IMPORT,
+        files: Constants.LIMIT_IMPORT_FILES,
+        fields: 50,
+        parts: 60,
+      },
+    });
     return upload;
   }
 }

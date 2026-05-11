@@ -121,6 +121,14 @@ const uploadLocal = multer({
     },
   }),
   fileFilter: fileFilter,
+  // DECISIONS D1: uploadLocal chỉ dùng cho /api/import (CSV/Excel parse server-side).
+  // Ảnh đi qua presigned URL trực tiếp S3 (task 05) — không qua đây.
+  limits: {
+    fileSize: Constants.LIMIT_IMPORT,
+    files: Constants.LIMIT_IMPORT_FILES,
+    fields: 50,
+    parts: 60,
+  },
 });
 
 module.exports = Upload;

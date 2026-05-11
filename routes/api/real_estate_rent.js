@@ -37,7 +37,7 @@ router.get(
 
 router.post(
   '/import/request',
-  [auth.authenticateToken, upload.uploadFile()],
+  [auth.authenticateToken, upload.uploadFile(), require('../../middlewares/magicBytes')()],
   checkInvalidBranch(),
   realEstateController.insertImportQueue,
 );

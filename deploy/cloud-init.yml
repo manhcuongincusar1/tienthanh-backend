@@ -1,0 +1,112 @@
+#cloud-config
+# Alibaba Cloud VPS 2C/4G Singapore — initial provisioning (DECISIONS A4).
+# Apply qua console "User Data" hoặc paste vào /var/lib/cloud/seed/nocloud/user-data.
+# Idempotent — chạy nhiều lần OK.
+
+hostname: tita-prod
+fqdn: tita-prod.localdomain
+manage_etc_hosts: true
+timezone: Asia/Ho_Chi_Minh
+locale: en_US.UTF-8
+
+# Disable root, tạo user deploy
+users:
+  - name: tita
+    groups: [sudo]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+      # REPLACE bằng public key thật trước khi apply.
+      - ssh-ed25519 AAAA__PASTE_DEPLOY_PUBLIC_KEY_HERE__ deploy@tienthanh
+
+package_update: true
+package_upgrade: true
+packages:
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - curl
+  - htop
+  - ncdu
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - rsync
+  - git
+  - jq
+
+write_files:
+  # SSH hardening
+  - path: /etc/ssh/sshd_config.d/99-tita.conf
+    permissions: '0644'
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      KbdInteractiveAuthentication no
+      AllowUsers tita
+      ClientAliveInterval 300
+      ClientAliveCountMax 2
+      MaxAuthTries 3
+      LoginGraceTime 30
+  # fail2ban override — SSH protect
+  - path: /etc/fail2ban/jail.d/sshd.local
+    permissions: '0644'
+    content: |
+      [sshd]
+      enabled = true
+      port = 22
+      filter = sshd
+      logpath = %(sshd_log)s
+      backend = %(sshd_backend)s
+      maxretry = 3
+      bantime = 3600
+      findtime = 600
+  # unattended-upgrades — chỉ security
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    permissions: '0644'
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+  # Sysctl — security + network tuning cho box 2C/4G
+  - path: /etc/sysctl.d/99-tita.conf
+    permissions: '0644'
+    content: |
+      # Swap conservative — ưu tiên RAM
+      vm.swappiness=10
+      vm.overcommit_memory=1
+      # Network
+      net.ipv4.tcp_syncookies=1
+      net.ipv4.conf.all.rp_filter=1
+      net.ipv4.conf.default.rp_filter=1
+      net.ipv4.icmp_echo_ignore_broadcasts=1
+      net.ipv4.tcp_max_syn_backlog=4096
+      net.core.somaxconn=1024
+      fs.file-max=200000
+
+runcmd:
+  # 1. SSH restart với config mới
+  - [ systemctl, restart, ssh ]
+  # 2. UFW — chỉ 22/80/443
+  - [ ufw, default, deny, incoming ]
+  - [ ufw, default, allow, outgoing ]
+  - [ ufw, allow, 22/tcp ]
+  - [ ufw, allow, 80/tcp ]
+  - [ ufw, allow, 443/tcp ]
+  - [ ufw, --force, enable ]
+  # 3. Enable services
+  - [ systemctl, enable, --now, fail2ban ]
+  - [ systemctl, enable, unattended-upgrades ]
+  # 4. Apply sysctl
+  - [ sysctl, --system ]
+  # 5. Swap 2GB (an toàn cho 4GB RAM, đề phòng OOM)
+  - bash -c 'if [ ! -f /swapfile ]; then fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab; fi'
+  # 6. App layout
+  - [ mkdir, -p, /opt/tita-api, /var/log/tita-api, /etc/tita-api ]
+  - [ chown, -R, tita:tita, /opt/tita-api, /var/log/tita-api ]
+  # 7. Log cuối — confirm cloud-init done
+  - bash -c 'echo "cloud-init OK $(date -Is)" >> /var/log/tita-bootstrap.log'
+
+final_message: "Tita cloud-init done after $UPTIME seconds. SSH: ssh tita@<ip>."

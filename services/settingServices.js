@@ -2,8 +2,10 @@ const BaseService = require('./baseService');
 const _ = require('lodash');
 const knexPg = require('../db/connectKnex');
 const Constants = require('../common/constants');
+const redis = require('../db/redis');
 
 const SETTING_KEY = 'setting';
+const CACHE_KEY = `setting:${SETTING_KEY}`;
 
 class SettingService extends BaseService {
   /**
@@ -20,6 +22,7 @@ class SettingService extends BaseService {
       .onConflict('key')
       .ignore()
       .returning('*');
+    if (rows[0]) await redis.del(CACHE_KEY);
     return rows[0] || false;
   };
 
@@ -40,19 +43,20 @@ class SettingService extends BaseService {
         updated_at: knexPg.fn.now(),
       })
       .returning('*');
+    if (rows[0]) await redis.del(CACHE_KEY);
     return rows[0] || false;
   };
 
+  // Cache flat shape 5 phút (DECISIONS C5). Invalidate explicit ở insert/update.
   getSetting = async (key) => {
-    const row = await knexPg('settings').where('key', SETTING_KEY).first();
-    if (!row) {
-      return false;
-    }
-    // Backward-compat: shape cũ `{key, ...rest}` (Mongo trả flat doc).
-    const flat = {key: row.key, ...(row.value || {})};
-    if (key) {
-      return flat[key];
-    }
+    const flat = await redis.wrap(CACHE_KEY, redis.TTL.SETTING, async () => {
+      const row = await knexPg('settings').where('key', SETTING_KEY).first();
+      if (!row) return false;
+      return {key: row.key, ...(row.value || {})};
+    });
+
+    if (!flat) return false;
+    if (key) return flat[key];
     return flat;
   };
 }

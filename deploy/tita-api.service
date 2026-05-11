@@ -1,0 +1,44 @@
+[Unit]
+Description=Tita API (Docker, single container)
+Wants=network-online.target docker.service
+After=network-online.target docker.service postgresql@15-main.service redis-server.service
+
+[Service]
+Type=notify
+NotifyAccess=all
+TimeoutStartSec=120
+Restart=always
+RestartSec=10
+EnvironmentFile=/etc/tita-api/runtime.env
+
+# Pre-start: pull image (silent fail OK — đã có local cache)
+ExecStartPre=-/usr/bin/docker pull ${TITA_IMAGE}
+# Stop + remove container cũ (silent fail OK — lần đầu chưa có)
+ExecStartPre=-/usr/bin/docker rm -f tita-api
+
+# Run — DECISIONS A5: single Node process, KHÔNG cluster.
+# --network host → connect localhost:5432 (PG) + localhost:6379 (Redis) trực tiếp.
+# --memory 1G → resource limit (DECISIONS A4).
+# --log-driver journald → log đi vào journalctl/systemd, logrotate task 09.
+ExecStart=/usr/bin/docker run \
+  --name tita-api \
+  --rm \
+  --network host \
+  --env-file /opt/tita-api/.env \
+  --memory 1g \
+  --memory-swap 1g \
+  --cpus 1.8 \
+  --log-driver journald \
+  --log-opt tag=tita-api \
+  --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=128m \
+  --tmpfs /app/uploads:rw,noexec,nosuid,size=64m \
+  ${TITA_IMAGE}
+
+ExecStop=/usr/bin/docker stop -t 30 tita-api
+
+# Notify systemd khi container ready (docker run forks).
+ExecStartPost=/bin/bash -c 'until curl -fsS http://127.0.0.1:3002/health >/dev/null 2>&1; do sleep 2; done; systemd-notify --ready'
+
+[Install]
+WantedBy=multi-user.target

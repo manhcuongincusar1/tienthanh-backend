@@ -1,32 +1,52 @@
 const RestAPI = require('../common/rest_api');
 const knexPg = require('../db/connectKnex');
 const Constants = require('../common/constants');
+const redis = require('../db/redis');
+const _ = require('lodash');
+
 const ROLE_ENUM = {
   SUPER_ADMIN: 1,
   ADMIN: 2,
   SALE: 2,
 };
-const _ = require('lodash');
+
+// Cache role row (id, type) qua Redis 1h (DECISIONS C5).
+// Invalidate explicit khi roleService update — caller phải `redis.del('perm:role:<id>')`.
+async function loadRole(role_id) {
+  return redis.wrap(`perm:role:${role_id}`, redis.TTL.PERMISSION, async () => {
+    const row = await knexPg('roles')
+      .where('status', Constants.STATUS_ENUM.ACTIVE)
+      .where('id', role_id)
+      .select('id', 'type')
+      .first();
+    return row || null;
+  });
+}
+
+async function loadRolePermissions(role_id) {
+  return redis.wrap(
+    `perm:perms:${role_id}`,
+    redis.TTL.PERMISSION,
+    async () => {
+      const row = await knexPg('role_permissions')
+        .where('role_id', role_id)
+        .first();
+      return row?.permission_data || null;
+    },
+  );
+}
 
 const permission = (key) => {
   return async (req, res, next) => {
     const {role_id} = req.auth;
-    const responseRole = await knexPg('roles')
-      .where('status', Constants.STATUS_ENUM.ACTIVE)
-      .where('id', role_id)
-      .select('type')
-      .first();
+    const responseRole = await loadRole(role_id);
 
     if (responseRole && responseRole.type === ROLE_ENUM.SUPER_ADMIN) {
       return next();
     }
 
     if (responseRole && responseRole.type !== ROLE_ENUM.SUPER_ADMIN) {
-      // Hot path: 1 query/request. DECISIONS: cache Redis sẽ đến ở Sprint 2.
-      const responsePermission = await knexPg('role_permissions')
-        .where('role_id', role_id)
-        .first();
-      const permission_data = responsePermission?.permission_data;
+      const permission_data = await loadRolePermissions(role_id);
 
       if (permission_data && !_.isEmpty(permission_data)) {
         const newAccessList = Object.entries(permission_data).reduce(
@@ -56,5 +76,8 @@ const permission = (key) => {
     }
   };
 };
+
+permission.invalidateRole = (role_id) =>
+  redis.del(`perm:role:${role_id}`, `perm:perms:${role_id}`);
 
 module.exports = permission;

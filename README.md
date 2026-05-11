@@ -62,6 +62,34 @@ npm run test:watch        # watch mode
 - Integration test: file `tests/integration/*.test.js` — tạo bảng tạm trong `beforeAll`, drop + `knex.destroy()` trong `afterAll`.
 - Tham khảo `tests/integration/settings.test.js` làm template.
 
+## Env vars
+
+### PG pool (DECISIONS C2)
+
+| Var | Default | Note |
+|---|---|---|
+| `PG_POOL_MAX` | 20 | Max connection pg.Pool (raw query) |
+| `PG_POOL_MIN` | 4 | Min connection pg.Pool |
+| `KNEX_POOL_MAX` | 10 | Max connection Knex pool |
+| `KNEX_POOL_MIN` | 2 | Min connection Knex pool |
+
+Tổng pool tối đa: 30 connection (single Node process). PG server `max_connections` cần ≥ 50 để dư ~20 cho psql/backup/admin.
+
+Khác:
+- `statement_timeout` + `query_timeout` = 30s hard-coded — kill query > 30s.
+- bigint (OID 20) coerce sang Number global ở `db/postgresql.js`.
+
+### Redis cache (DECISIONS C5)
+
+| Var | Default | Note |
+|---|---|---|
+| `REDIS_URL` | `redis://127.0.0.1:6379` | URL Redis |
+| `USE_REDIS_CACHE` | `true` | Set `false` để bypass cache (fallback DB) |
+
+TTL: permission 1h, settings 5m, master data 24h, report 15m. Invalidate explicit khi update.
+Fail-open: Redis down → log warning throttled 60s, fallback DB.
+Test env (`NODE_ENV=test`) tự động skip Redis.
+
 ## GIT
 
 ### New Feature

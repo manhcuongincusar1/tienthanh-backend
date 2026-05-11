@@ -1,0 +1,19 @@
+# Stack config — tienthanh-prod
+# Secrets set qua: pulumi config set --secret <key> <value>
+config:
+  aws:region: ap-southeast-1
+  tienthanh-api:projectName: tienthanh
+  tienthanh-api:env: prod
+  tienthanh-api:hostedZoneName: datviet.ai
+  tienthanh-api:apiDomain: tienthanhapi.datviet.ai
+  tienthanh-api:feDomain: tienthanh.datviet.ai
+  tienthanh-api:cdnDomain: tienthanhcdn.datviet.ai
+  tienthanh-api:sesDomain: tienthanh.datviet.ai
+  tienthanh-api:vpsIp: 0.0.0.0          # REPLACE sau khi provision (runbook_01)
+  tienthanh-api:appDataBucketName: tienthanh-app-data
+  tienthanh-api:backupBucketName: tienthanh-backups
+  tienthanh-api:ecrRepoName: tienthanh-api
+  tienthanh-api:alertEmail: manhcuongincusar@gmail.com
+  # Telegram webhook (optional) — set qua --secret nếu dùng.
+  # tienthanh-api:telegramBotToken: (secret)
+  # tienthanh-api:telegramChatId: (secret)

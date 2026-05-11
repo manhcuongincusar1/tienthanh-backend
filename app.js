@@ -51,8 +51,30 @@ app.use(logger('dev'));
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(__dirname + '/upload'));
 
+// CORS allow list — explicit whitelist thay vì reflect-any (origin: true).
+// Auth bằng JWT Bearer trong Authorization header → KHÔNG cần credentials: true.
+// CORS_ALLOW_ORIGINS env (comma-separated) override mặc định nếu set.
+var defaultAllowList =
+  process.env.NODE_ENV === 'production'
+    ? ['https://tienthanh.datviet.ai']
+    : [
+        'http://localhost:8000',
+        'http://localhost:8001',
+        'http://localhost:3000',
+      ];
+var allowList = process.env.CORS_ALLOW_ORIGINS
+  ? process.env.CORS_ALLOW_ORIGINS.split(',').map(function (s) {
+      return s.trim();
+    })
+  : defaultAllowList;
+
 var corsOptions = {
-  origin: true,
+  origin: function (origin, cb) {
+    if (!origin) return cb(null, true); // server-to-server, curl, healthcheck
+    if (allowList.indexOf(origin) !== -1) return cb(null, true);
+    return cb(new Error('CORS: origin not allowed: ' + origin));
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 };
 
 app.use(cors(corsOptions));
@@ -71,6 +93,11 @@ app.use(
     saveUninitialized: false,
   }),
 );
+// Liveness probe — không auth, không DB. Caddy + systemd healthcheck + GHA deploy.sh.
+app.get('/health', (req, res) => {
+  res.json({status: 'ok', ts: Date.now()});
+});
+
 //API
 // const worker = new Worker('./worker/updateImportQueue.js', {
 //   workerData: {},

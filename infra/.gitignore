@@ -1,0 +1,6 @@
+node_modules/
+bin/
+*.tsbuildinfo
+.pulumi/
+lambda/image-resize/function.zip
+lambda/image-resize/node_modules/

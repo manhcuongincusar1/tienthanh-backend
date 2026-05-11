@@ -4,6 +4,7 @@ const RestAPI = require('../../common/rest_api');
 const auth = require('../../middlewares/auth');
 const {exportService} = require('../../services/exportService');
 const upload = require('../../common/uploadMiddleware');
+const magicBytes = require('../../middlewares/magicBytes');
 const _ = require('lodash');
 const Constants = require('../../common/constants');
 const {importService} = require('../../services/importService');
@@ -126,7 +127,7 @@ router.get(
 );
 router.post(
   '/import/request',
-  [auth.authenticateToken, upload.uploadFile()],
+  [auth.authenticateToken, upload.uploadFile(), magicBytes()],
   insertImportQueue,
 );
 

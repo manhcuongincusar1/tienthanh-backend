@@ -1,6 +1,12 @@
 const {Pool} = require('pg');
 const BaseConnection = require("./baseConnection");
 const config = require('../config/setting')();
+
+// bigint (OID 20) — coerce sang Number để callsite không phải tự coerce.
+// PG default trả string vì JS Number không cover > 2^53. App tita không có bigint
+// vượt safe-int, nên coerce global an toàn.
+require('pg').types.setTypeParser(20, (val) => (val === null ? null : Number(val)));
+
 class PostgresqlConnect extends BaseConnection {
     dbConnection;
     constructor() {
@@ -8,7 +14,30 @@ class PostgresqlConnect extends BaseConnection {
         const connectionString = config.databases.postgres;
         this.dbConnection = new Pool({
             connectionString,
-        })
+            max: Number(process.env.PG_POOL_MAX) || 20,
+            min: Number(process.env.PG_POOL_MIN) || 4,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+            statement_timeout: 30000,
+            query_timeout: 30000,
+            application_name: 'tita-api-pg',
+        });
+
+        this.dbConnection.on('error', (err) => {
+            console.error('pg_pool_error', err);
+        });
+
+        // Pool stats log mỗi 30s — debug pool exhaustion (DECISIONS B5).
+        if (process.env.NODE_ENV !== 'test') {
+            setInterval(() => {
+                const {totalCount, idleCount, waitingCount} = this.dbConnection;
+                if (waitingCount > 0) {
+                    console.warn('pg_pool_waiting', {totalCount, idleCount, waitingCount});
+                } else {
+                    console.log('pg_pool_stats', {totalCount, idleCount, waitingCount});
+                }
+            }, 30000).unref();
+        }
     }
 
 

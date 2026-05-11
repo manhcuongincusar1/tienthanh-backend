@@ -22,6 +22,15 @@ services:
       - ./dbdata:/data/db
     environment:
       MONGO_INITDB_DATABASE: tita
+  redis:
+    image: redis:7-alpine
+    container_name: tita_redis
+    restart: always
+    ports:
+      - '6379:6379'
+    volumes:
+      - ./redis_data:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
   administrative_nodes:
     image: globalmpire/administrative-unit-node-api:qat
     container_name: administrative_unit_node

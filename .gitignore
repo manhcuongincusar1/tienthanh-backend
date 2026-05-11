@@ -39,4 +39,4 @@ dbdata
 .env
 .env.local
 .env.*.local
-# .env.test giữ commit vì chỉ chứa dev defaults (tham chiếu cho dev mới)
+# .env.test giữ commit vì chỉ chứa dev defaults (tham chiếu cho dev mới)redis_data

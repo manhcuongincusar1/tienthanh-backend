@@ -51,7 +51,9 @@ const Constants = {
     IS_DEV || process.env.SECRET_JWT == undefined
       ? 'f90d6859-f5f6-401f-94ef-40d870f79c8d'
       : process.env.SECRET_JWT,
-  LIMIT_DEFAULT: 100 * 1024 * 1024, //100MB
+  LIMIT_DEFAULT: 100 * 1024 * 1024, //100MB (legacy — uploadFileS3 path, deprecated theo DECISIONS D1)
+  LIMIT_IMPORT: 25 * 1024 * 1024, // 25MB cho /api/import (DECISIONS D1)
+  LIMIT_IMPORT_FILES: 1, // chỉ 1 file/request — chống abuse
   IS_WRITE_LOG: true,
   DISPLAY_FORMAT_DATE: 'DD/MM/YYYY',
   DB_FORMAT_DATE: 'YYYY-MM-DD',
@@ -66,17 +68,21 @@ const Constants = {
   DB_TIMEZONE: 'UTC',
   SECRET_KEY_DECRYPT: 'djfshfsdjfhdsfjdshfjsdfh',
   //thêm chuỗi #repl# cho thành string vì khi for nếu ko string thì sẽ bắt đầu từ 0=> chủ nhật
+  // DECISIONS D1/D2 (Sprint 3 task 04):
+  //  - Bỏ `image/svg+xml` (XSS qua <script> inline).
+  //  - Bỏ `image/*` wildcard.
+  //  - Bỏ `application/octet-stream` (bypass dễ).
+  //  - Duplicate keys cũ (vd 'application/msword' map 'doc' + 'dot') đã merge — JS object key sau ghi đè key trước, giữ value cuối cùng để preserve behavior cũ.
   MINETYPE_ALLOW_UPLOAD: {
     FILES: {
+      // Word
       'application/msword': 'doc',
-      'application/msword': 'dot',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
         'docx',
       'application/vnd.ms-word.document.macroEnabled.12': 'docm',
       'application/vnd.ms-word.template.macroEnabled.12': 'dotm',
+      // Excel
       'application/vnd.ms-excel': 'xls',
-      'application/vnd.ms-excel': 'xlt',
-      'application/vnd.ms-excel': 'xla',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
         'xlsx',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.template':
@@ -85,10 +91,8 @@ const Constants = {
       'application/vnd.ms-excel.template.macroEnabled.12': 'xltm',
       'application/vnd.ms-excel.addin.macroEnabled.12': 'xlam',
       'application/vnd.ms-excel.sheet.binary.macroEnabled.12': 'xlsb',
+      // PowerPoint
       'application/vnd.ms-powerpoint': 'ppt',
-      'application/vnd.ms-powerpoint': 'pot',
-      'application/vnd.ms-powerpoint': 'pps',
-      'application/vnd.ms-powerpoint': 'ppa',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation':
         'pptx',
       'application/vnd.openxmlformats-officedocument.presentationml.template':
@@ -99,29 +103,40 @@ const Constants = {
       'application/vnd.ms-powerpoint.presentation.macroEnabled.12': 'pptm',
       'application/vnd.ms-powerpoint.template.macroEnabled.12': 'potm',
       'application/vnd.ms-powerpoint.slideshow.macroEnabled.12': 'ppsm',
-      //mine type pdf
+      // PDF + CSV
       'text/csv': 'csv',
       'application/pdf': 'pdf',
-      'application/octet-stream': 'pdf',
-      //mine type image
+      // Images — SVG removed (D2), image/* wildcard removed.
       'image/apng': 'apng',
       'image/bmp': 'bmp',
       'image/gif': 'gif',
       'image/x-icon': 'ico',
-      'image/x-icon': 'cur',
       'image/jpeg': 'jpg',
-      'image/jpeg': 'jfif',
-      'image/jpeg': 'pjpeg',
-      'image/jpeg': 'pjp',
       'image/png': 'png',
-      'image/svg+xml': 'svg',
       'image/tiff': 'tif',
-      'image/tiff': 'tiff',
       'image/webp': 'webp',
-      'image/*': 'jpgchecksao', //check thêm type có *
       'video/mp4': 'mp4',
     },
-  }, //MineType cho phép upload trong server
+  }, //MIME cho phép upload trong server
+
+  // Whitelist mới dạng array — dùng cho fileFilter logic mới (validation magic bytes ở task 09).
+  // KHÔNG có SVG (D2). KHÔNG có octet-stream.
+  MIMETYPE_IMAGE: [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/bmp',
+    'image/tiff',
+  ],
+  MIMETYPE_DOC: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
+  ],
 
   DIR_DOWNLOAD: 'download',
   DIR_UPLOAD: 'upload',

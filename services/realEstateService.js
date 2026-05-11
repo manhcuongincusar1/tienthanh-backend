@@ -2062,13 +2062,19 @@ class RealEstateService extends BaseService {
     });
 
     if (locationList.length > 0) {
-      await locationList.forEach(async (item) => {
-        if (item?.location && item?.real_estate_id) {
-          await knexPg('real_estate')
-            .where('id', item.real_estate_id)
-            .update({location: Number(item.location)});
-        }
-      });
+      const validItems = locationList.filter(
+        (item) => item?.location && item?.real_estate_id,
+      );
+      const chunks = _.chunk(validItems, 50);
+      for (const batch of chunks) {
+        await Promise.all(
+          batch.map((item) =>
+            knexPg('real_estate')
+              .where('id', item.real_estate_id)
+              .update({location: Number(item.location)}),
+          ),
+        );
+      }
       this.offset += 1000;
       await this.backupLocation();
     } else {

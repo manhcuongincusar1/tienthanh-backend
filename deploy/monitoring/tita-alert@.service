@@ -1,0 +1,7 @@
+[Unit]
+Description=Telegram alert for %i
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/tita-api/alert.env
+ExecStart=/usr/local/bin/tita-alert.sh "%i"

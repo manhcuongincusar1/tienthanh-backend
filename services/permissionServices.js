@@ -2,6 +2,10 @@ const BaseService = require('./baseService');
 const _ = require('lodash');
 const knexPg = require('../db/connectKnex');
 const Constants = require('../common/constants');
+const redis = require('../db/redis');
+
+const invalidate = (role_id) =>
+  redis.del(`perm:role:${role_id}`, `perm:perms:${role_id}`);
 
 class PermissionService extends BaseService {
   getPermissions = async (role) => {
@@ -102,6 +106,7 @@ class PermissionService extends BaseService {
         updated_at: knexPg.fn.now(),
       })
       .returning('*');
+    if (rows[0]) await invalidate(role_id);
     return rows[0] || false;
   };
 
@@ -121,6 +126,7 @@ class PermissionService extends BaseService {
         updated_at: knexPg.fn.now(),
       })
       .returning('*');
+    if (row) await invalidate(id);
     return row || false;
   };
 

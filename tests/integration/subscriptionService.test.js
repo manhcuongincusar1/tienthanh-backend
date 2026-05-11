@@ -55,7 +55,7 @@ describe('SubscriptionService (PG-backed)', () => {
     await subscriptionService.insertNewSubscription(7, samplePush(1), 'a-7');
     const res = await subscriptionService.getSubscription(7);
     expect(res).toEqual({
-      userId: '7',
+      userId: 7, // bigint coerce → Number per S2 task 02 (global type parser)
       auth: 'a-7',
       info: samplePush(1),
     });

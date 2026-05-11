@@ -1,0 +1,80 @@
+# Caddy v2 config cho Tita API.
+# Apply trên VPS prod ở Sprint 4. KHÔNG chạy local.
+#
+# Per DECISIONS:
+#  - D1: ảnh upload trực tiếp S3 qua presigned URL → KHÔNG qua Caddy.
+#         Caddy chỉ phục vụ JSON API + /api/import (CSV/Excel parse server-side).
+#  - A5: single Node process backend.
+
+# Caddy auto HTTPS — DNS tienthanhapi.datviet.ai → VPS IP (Pulumi task 10 tạo A record).
+# Let's Encrypt issue cert tự động lần đầu.
+
+{
+	# Global option — email cho Let's Encrypt expiry notification.
+	email manhcuongincusar@gmail.com
+	# Tắt admin endpoint trên port 2019 ngoài localhost.
+	admin off
+}
+
+tienthanhapi.datviet.ai {
+	# Logging
+	log {
+		output file /var/log/caddy/tita-api.log {
+			roll_size 100mb
+			roll_keep 7
+		}
+		format json
+	}
+
+	# /api/import nhận file CSV/Excel → cần 25MB (D1 amend).
+	handle /api/import* {
+		request_body {
+			max_size 25MB
+		}
+		reverse_proxy 127.0.0.1:3002
+	}
+
+	# /_api/file/presign* — chỉ JSON, không nhận file upload → 1MB đủ chống abuse.
+	handle /_api/file/presign* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:3002
+	}
+
+	# Default JSON API — 5MB (cho phép body lớn do filter/search nhiều).
+	handle {
+		request_body {
+			max_size 5MB
+		}
+		reverse_proxy 127.0.0.1:3002 {
+			health_uri /health
+			health_interval 30s
+		}
+	}
+
+	# Common headers.
+	header {
+		# HSTS — Caddy bật HTTPS, force HSTS để ngăn downgrade.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		# Anti-clickjacking + MIME sniff defense.
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Remove fingerprint.
+		-Server
+	}
+
+	# Encoding — gzip + zstd cho JSON API.
+	encode zstd gzip
+
+	# Rate limit (cần plugin caddy-ratelimit, optional).
+	# Bỏ comment nếu cài plugin: xcaddy build --with github.com/mholt/caddy-ratelimit
+	# rate_limit {
+	# 	zone tita-default {
+	# 		key {http.request.remote.host}
+	# 		events 300
+	# 		window 1m
+	# 	}
+	# }
+}

@@ -1,0 +1,32 @@
+# /etc/logrotate.d/tita-api
+# Docker container chạy với --log-driver=journald → journald quản lý log.
+# File này chỉ rotate /var/log/tita-api/*.log nếu app ghi extra log ra disk
+# (vd middleware audit log từ S2 hoặc PG slow log mounted vào).
+
+/var/log/tita-api/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 tita tita
+    sharedscripts
+    postrotate
+        /usr/bin/docker kill --signal=USR1 tita-api 2>/dev/null || true
+    endscript
+}
+
+# PG slow query log
+/var/log/postgresql/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 postgres adm
+}
+
+# Caddy access log — Caddy đã rotate trong Caddyfile (roll_size 100mb / roll_keep 7).
+# Không cần config logrotate thêm.

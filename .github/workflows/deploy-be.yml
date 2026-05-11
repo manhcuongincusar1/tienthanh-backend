@@ -1,0 +1,167 @@
+name: Deploy BE
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'infra/**'
+      - '.github/**'
+      - '**.md'
+      - 'tests/**'
+      - 'tita-reactjs-main/**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (default: auto)'
+        required: false
+
+concurrency:
+  group: deploy-be-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+
+      - id: meta
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=prod-$(date +%Y%m%d)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEPLOYER }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEPLOYER }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Build + push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          provenance: false
+          tags: |
+            ${{ secrets.ECR_REPO_URL }}:${{ steps.meta.outputs.tag }}
+            ${{ secrets.ECR_REPO_URL }}:latest
+          cache-from: type=registry,ref=${{ secrets.ECR_REPO_URL }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.ECR_REPO_URL }}:buildcache,mode=max
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://tienthanhapi.datviet.ai/health
+    steps:
+      - uses: actions/checkout@v4
+
+      # Render .env từ secrets — KHÔNG echo content ra log.
+      - name: Render .env
+        env:
+          POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          APP_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_APP }}
+          APP_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY_APP }}
+          CF_KEY_PAIR_ID: ${{ secrets.CF_KEY_PAIR_ID }}
+          CF_PRIVATE_KEY: ${{ secrets.CF_PRIVATE_KEY }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        run: |
+          umask 077
+          cat > .env.production <<EOF
+          NODE_ENV=production
+          PORT=3002
+          TZ=Asia/Ho_Chi_Minh
+
+          POSTGRES_URL=$POSTGRES_URL
+          PG_POOL_MAX=20
+          PG_POOL_MIN=4
+
+          REDIS_URL=$REDIS_URL
+          USE_REDIS_CACHE=true
+
+          AWS_REGION=${{ env.AWS_REGION }}
+          AWS_ACCESS_KEY_ID=$APP_KEY_ID
+          AWS_SECRET_ACCESS_KEY=$APP_SECRET
+          S3_KEY=$APP_KEY_ID
+          S3_SECRET=$APP_SECRET
+          S3_BUCKET=$S3_BUCKET
+
+          CDN_BASE=https://tienthanhcdn.datviet.ai
+          CF_KEY_PAIR_ID=$CF_KEY_PAIR_ID
+          CF_PRIVATE_KEY=$CF_PRIVATE_KEY
+
+          SES_FROM=noreply@tienthanh.datviet.ai
+          FRONTEND_URL=https://tienthanh.datviet.ai
+          ENABLE_CRON=1
+          LOG_LEVEL=info
+          EOF
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload .env
+        run: |
+          scp -i ~/.ssh/id_ed25519 \
+            .env.production \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/tita-api/.env.new
+          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "sudo mv /opt/tita-api/.env.new /opt/tita-api/.env && sudo chown tita:tita /opt/tita-api/.env && sudo chmod 600 /opt/tita-api/.env"
+
+      - name: Deploy
+        env:
+          IMAGE_TAG: ${{ needs.build-push.outputs.image_tag }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "sudo AWS_REGION=${{ env.AWS_REGION }} \
+             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID_DEPLOYER }} \
+             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY_DEPLOYER }} \
+             ECR_REGISTRY=$(echo '${{ secrets.ECR_REPO_URL }}' | cut -d/ -f1) \
+             TITA_IMAGE_TAG=$IMAGE_TAG \
+             /opt/tita-api/deploy.sh"
+
+      - name: External health check
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS https://tienthanhapi.datviet.ai/health >/dev/null; then
+              echo "healthy after ${i}x5s"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "external health check failed"
+          exit 1
+
+      - name: Telegram notify
+        if: always()
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          STATUS="${{ job.status }}"
+          MSG="[TienThanh][BE] deploy ${STATUS} — tag ${{ needs.build-push.outputs.image_tag }} — actor ${{ github.actor }}"
+          curl -s -X POST "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=-5226544067" \
+            --data-urlencode "text=${MSG}" >/dev/null || true

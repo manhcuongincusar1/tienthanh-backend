@@ -1,0 +1,7 @@
+[Unit]
+Description=Tita local health check
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/tita-api/alert.env
+ExecStart=/usr/local/bin/tita-health-check.sh
