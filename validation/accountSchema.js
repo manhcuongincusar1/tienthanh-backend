@@ -64,7 +64,7 @@ const updateStatusById = {
 const getAccountByIdSchema = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'Id is type string', format: 'uuid'},
+    id: {type: 'string', description: 'Id is type string', pattern: '^[0-9]+$'},
   },
 };
 

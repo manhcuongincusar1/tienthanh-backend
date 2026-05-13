@@ -134,14 +134,14 @@ const getTransactionHistorySchema = {
       type: 'string',
       description: 'customer_id is type string',
       maxLength: 250,
-      format: 'uuid',
+      pattern: '^[0-9]+$',
     },
 
     broker_id: {
       type: 'string',
       description: 'customer_id is type string',
       maxLength: 250,
-      format: 'uuid',
+      pattern: '^[0-9]+$',
     },
 
     limit: {
@@ -164,7 +164,7 @@ const getCustomerInfoByIdSchema = {
       type: 'string',
       description: 'customer_id is type string',
       maxLength: 250,
-      format: 'uuid',
+      pattern: '^[0-9]+$',
     },
   },
 };
@@ -181,19 +181,19 @@ const checkExistPhoneNumberSchema = {
       type: 'string',
       description: 'customer_id is type string',
       maxLength: 250,
-      format: 'uuid',
+      pattern: '^[0-9]+$',
     },
     branch_id: {
       type: 'string',
       description: 'customer_id is type string',
       maxLength: 250,
-      format: 'uuid',
+      pattern: '^[0-9]+$',
     },
     id: {
       type: 'string',
       description: 'id is type string',
       maxLength: 250,
-      format: 'uuid',
+      pattern: '^[0-9]+$',
     },
   },
 };

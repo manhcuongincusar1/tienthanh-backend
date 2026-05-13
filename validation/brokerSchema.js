@@ -1,7 +1,7 @@
 const getBrokerById = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'id is type string', format: 'uuid'},
+    id: {type: 'string', description: 'id is type string', pattern: '^[0-9]+$'},
   },
 };
 
