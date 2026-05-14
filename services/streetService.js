@@ -35,7 +35,12 @@ const getList = async (query = {}) => {
   if (ward_id) q = q.where('ward_id', Number(ward_id));
   if (district_id) q = q.where('district_id', Number(district_id));
   if (province_city_id) q = q.where('province_city_id', Number(province_city_id));
-  if (status !== undefined && status !== '' && status !== null) q = q.where('status', Number(status));
+  if (Array.isArray(status)) {
+    const vals = status.map(Number).filter(Number.isFinite);
+    if (vals.length) q = q.whereIn('status', vals);
+  } else if (status !== undefined && status !== '' && status !== null) {
+    q = q.where('status', Number(status));
+  }
 
   const [rows, countRow] = await Promise.all([
     q

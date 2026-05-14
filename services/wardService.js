@@ -25,7 +25,12 @@ const getList = async (query = {}) => {
   }
   if (code) q = q.where('code', code);
   if (district_id) q = q.where('district_id', Number(district_id));
-  if (status !== undefined && status !== '' && status !== null) q = q.where('status', Number(status));
+  if (Array.isArray(status)) {
+    const vals = status.map(Number).filter(Number.isFinite);
+    if (vals.length) q = q.whereIn('status', vals);
+  } else if (status !== undefined && status !== '' && status !== null) {
+    q = q.where('status', Number(status));
+  }
 
   const [rows, countRow] = await Promise.all([
     q
