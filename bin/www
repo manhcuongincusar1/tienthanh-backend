@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// Auto-load .env cho local dev. Idempotent — no-op nếu không có file.
+// Prod (Docker container) lấy env từ systemd/docker compose, KHÔNG cần file.
+require('dotenv').config();
+
 /**
  * Module dependencies.
  */
