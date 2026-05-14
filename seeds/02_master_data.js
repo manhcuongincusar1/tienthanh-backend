@@ -1,6 +1,7 @@
 // Bootstrap master data hành chính VN (province / district / ward / street + translations).
-// Source: scripts/data/master_data.sql.gz — extract từ prod dump tita_28_05_2024.sql.gz.
-// 63 tỉnh, 707 huyện, 11313 phường, 8891 đường + 7 file translation.
+// Source:
+//   scripts/data/master_data.sql.gz — extract từ prod dump tita_28_05_2024.sql.gz (thiếu wards_translation).
+//   scripts/data/wards_translation.sql.gz — bổ sung từ prod-ref legacy (11 314 row vi).
 //
 // Idempotent: skip nếu province_city đã có row (tránh ghi đè data prod hoặc CRUD trên dev sau seed).
 // Chạy lần đầu deploy. Sau khi seed → admin có thể CRUD thêm/sửa qua /province /district /ward /street.
@@ -10,6 +11,7 @@ const path = require('path');
 const zlib = require('zlib');
 
 const GZ_PATH = path.join(__dirname, '..', 'scripts', 'data', 'master_data.sql.gz');
+const WARDS_TRANSLATION_GZ = path.join(__dirname, '..', 'scripts', 'data', 'wards_translation.sql.gz');
 
 const SEQUENCES = [
   'province_city',
@@ -18,6 +20,7 @@ const SEQUENCES = [
   'streets',
   'province_city_translation',
   'districts_translation',
+  'wards_translation',
   'streets_translation',
 ];
 
@@ -40,6 +43,16 @@ exports.seed = async (knex) => {
 
   console.log('  [02_master_data] applying INSERTs...');
   await knex.raw(sql);
+
+  if (fs.existsSync(WARDS_TRANSLATION_GZ)) {
+    console.log(`  [02_master_data] loading ${WARDS_TRANSLATION_GZ}...`);
+    const wtBuf = fs.readFileSync(WARDS_TRANSLATION_GZ);
+    const wtSql = zlib.gunzipSync(wtBuf).toString('utf8');
+    console.log(`  [02_master_data] wards_translation decompressed: ${(wtSql.length / 1024).toFixed(0)}KB`);
+    await knex.raw(wtSql);
+  } else {
+    console.warn(`  [02_master_data] skip wards_translation — ${WARDS_TRANSLATION_GZ} not found`);
+  }
 
   console.log('  [02_master_data] re-syncing sequences...');
   for (const t of SEQUENCES) {
