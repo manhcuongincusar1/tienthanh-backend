@@ -38,7 +38,8 @@ const checkExistRealEstateStatusSchema = {
       description: 'title is type string',
     },
     current_status_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'current_status_id is type string',
     },
   },

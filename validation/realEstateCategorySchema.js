@@ -21,7 +21,8 @@ const checkDuplicateRealEstateCategorySchema = {
   type: 'object',
   properties: {
     current_category_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'current_category_id is type string',
     },
     title: {

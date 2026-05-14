@@ -2,17 +2,20 @@ const getBranchesListSchema = {
   type: 'object',
   properties: {
     province_city_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'province_city_id is type integer',
       maxLength: 10,
     },
     district_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'district_id is type integer',
       maxLength: 10,
     },
     ward_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'ward_id is type integer',
       maxLength: 10,
     },
@@ -37,7 +40,7 @@ const getBranchesListSchema = {
 const deletebranchByIdSchema = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'id is type string', maxLength: 250},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "id is type string"},
   },
 };
 
@@ -45,19 +48,22 @@ const updatebranchByIdSchema = {
   type: 'object',
   properties: {
     province_city_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       required: true,
       description: 'province_city_id is type integer',
       maxLength: 10,
     },
     district_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       required: true,
       description: 'district_id is type integer',
       maxLength: 10,
     },
     ward_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       required: true,
       description: 'ward_id is type integer',
       maxLength: 10,
@@ -79,7 +85,8 @@ const updatebranchByIdSchema = {
       maxLength: 10,
     },
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'id is type string',
       required: true,
       maxLength: 250,
@@ -91,13 +98,13 @@ const createBranchSchema = {
   type: 'object',
   properties: {
     ...updatebranchByIdSchema.properties,
-    id: {type: 'string', description: 'id is type string', maxLength: 250},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "id is type string"},
   },
 };
 const updateStatusById = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'Id is type string', maxLength: 250},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "Id is type string"},
     status: {
       type: 'integer',
       description: 'status is type integer',

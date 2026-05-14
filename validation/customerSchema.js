@@ -4,7 +4,8 @@ const getCustomerListSellRentSchema = {
     province_city_id: {
       type: 'array',
       items: {
-        type: 'string',
+        type: ['integer', 'string'],
+        pattern: '^[0-9]+$',
       },
       description: 'province_city_id is type array',
       maxLength: 250,
@@ -12,7 +13,8 @@ const getCustomerListSellRentSchema = {
     district_id: {
       type: 'array',
       items: {
-        type: 'string',
+        type: ['integer', 'string'],
+        pattern: '^[0-9]+$',
       },
       description: 'district_id is type array',
       maxLength: 250,
@@ -25,7 +27,8 @@ const getCustomerListSellRentSchema = {
     creator_sale_id: {
       type: 'array',
       items: {
-        type: 'string',
+        type: ['integer', 'string'],
+        pattern: '^[0-9]+$',
       },
       description: 'creator_sale_id is type array',
       maxLength: 250,
@@ -83,14 +86,16 @@ const getCustomerBuyRentSchema = {
       maxLength: 250,
     },
     branch_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'branch_id is type string',
       maxLength: 250,
     },
     creator_sale_id: {
       type: 'array',
       items: {
-        type: 'string',
+        type: ['integer', 'string'],
+        pattern: '^[0-9]+$',
       },
       description: 'creator_sale_id is type array',
       maxLength: 250,
@@ -131,16 +136,16 @@ const getTransactionHistorySchema = {
   type: 'object',
   properties: {
     customer_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'customer_id is type string',
-      maxLength: 250,
       pattern: '^[0-9]+$',
     },
 
     broker_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'customer_id is type string',
-      maxLength: 250,
       pattern: '^[0-9]+$',
     },
 
@@ -161,9 +166,9 @@ const getCustomerInfoByIdSchema = {
   type: 'object',
   properties: {
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'customer_id is type string',
-      maxLength: 250,
       pattern: '^[0-9]+$',
     },
   },
@@ -178,21 +183,21 @@ const checkExistPhoneNumberSchema = {
       maxLength: 10,
     },
     customer_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'customer_id is type string',
-      maxLength: 250,
       pattern: '^[0-9]+$',
     },
     branch_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'customer_id is type string',
-      maxLength: 250,
       pattern: '^[0-9]+$',
     },
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'id is type string',
-      maxLength: 250,
       pattern: '^[0-9]+$',
     },
   },
@@ -225,9 +230,9 @@ const insertCustomerBuyRentSchema = {
       required: true,
     },
     branch_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'branch_id is type string',
-      maxLength: 250,
       required: true,
     },
     phone_number_main: {
@@ -260,9 +265,9 @@ const updateCustomerBuyRentSchema = {
       required: true,
     },
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'id is type string',
-      maxLength: 250,
       required: true,
     },
     phone_number_prev: {
@@ -286,12 +291,14 @@ const updateCustomerDemandSchema = {
   type: 'object',
   properties: {
     province_city_id: {
-      type: 'number',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'province_city_id is type number',
       maxLength: 250,
     },
     districts_id: {
-      type: 'number',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'districts_id is type number',
       maxLength: 10,
     },
@@ -321,12 +328,14 @@ const updateCustomerDemandSchema = {
       maxLength: 250,
     },
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'id is type string',
       maxLength: 250,
     },
     customer_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'customer_id is type string',
       maxLength: 250,
     },
@@ -336,7 +345,7 @@ const updateCustomerDemandSchema = {
 const getDemandBuyRentByCustomerId = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'id is type string'},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "id is type string"},
   },
 };
 
@@ -349,7 +358,8 @@ const getListPhoneNumberSchema = {
       maxLength: 250,
     },
     branch_id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'branch_id is type string',
       maxLength: 250,
     },
@@ -360,9 +370,9 @@ const deleteDemandBuyRentSchema = {
   type: 'object',
   properties: {
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'Id is type string',
-      maxLength: 250,
       required: true,
     },
   },

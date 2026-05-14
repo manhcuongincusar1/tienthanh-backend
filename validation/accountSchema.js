@@ -2,7 +2,8 @@ const updateAccountSchema = {
   type: 'object',
   properties: {
     id: {
-      type: 'string',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       required: true,
       description: 'id is type string',
     },
@@ -56,7 +57,7 @@ const updateAccountSchema = {
 const updateStatusById = {
   type: 'object',
   properties: {
-    id: {type: 'integer', description: 'Id is type integer'},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "Id is type integer"},
     status: {type: 'integer', description: 'status is type integer'},
   },
 };
@@ -64,14 +65,14 @@ const updateStatusById = {
 const getAccountByIdSchema = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'Id is type string', pattern: '^[0-9]+$'},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "Id is type string"},
   },
 };
 
 const updatePasswordById = {
   type: 'object',
   properties: {
-    id: {type: 'integer', description: 'Id is type integer'},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "Id is type integer"},
     status: {type: 'string', description: 'password is type string'},
   },
 };

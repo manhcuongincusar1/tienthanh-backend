@@ -17,7 +17,7 @@ const realEstateFilterSchema = {
 const insertRealEstateSchema = {
   type: 'object',
   properties: {
-    creator_sale_id: {type: 'integer', description: 'creator_sale_id is integer (users.id)'},
+    creator_sale_id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: "creator_sale_id is integer (users.id)"},
     address: {
       type: 'string',
       description: 'address is type string',
@@ -64,11 +64,13 @@ const insertRealEstateSchema = {
       maxLength: 1000,
     },
     sale_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'sale_id is integer (sales.id)',
     },
     category_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'category_id is integer (real_estate_category.id)',
     },
     category_title: {
@@ -77,19 +79,23 @@ const insertRealEstateSchema = {
       maxLength: 250,
     },
     real_estate_status_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'real_estate_status_id is integer (real_estate_status.id)',
     },
     parent_real_estate_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'parent_real_estate_id is integer (self-ref)',
     },
     branch_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'branch_id is integer (branches.id)',
     },
     province_city_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'province_city_id is type integer',
       maxLength: 10,
     },
@@ -99,7 +105,8 @@ const insertRealEstateSchema = {
       maxLength: 250,
     },
     district_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'district_id is type integer',
       maxLength: 10,
     },
@@ -109,7 +116,8 @@ const insertRealEstateSchema = {
       maxLength: 250,
     },
     street_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'street_id is type integer',
       maxLength: 10,
     },
@@ -119,7 +127,8 @@ const insertRealEstateSchema = {
       maxLength: 250,
     },
     ward_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'ward_id is type integer',
       maxLength: 10,
     },
@@ -166,22 +175,26 @@ const checkDuplicateRealEstateSchema = {
   type: 'object',
   properties: {
     province_city_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'province_city_id is type integer',
       maxLength: 10,
     },
     district_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'district_id is type integer',
       maxLength: 10,
     },
     ward_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'ward_id is type integer',
       maxLength: 10,
     },
     street_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'street_id is type integer',
       maxLength: 10,
     },
@@ -191,11 +204,13 @@ const checkDuplicateRealEstateSchema = {
       maxLength: 250,
     },
     real_estate_status_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'real_estate_status_id is integer',
     },
     real_estate_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'real_estate_id is integer',
     },
     type: {type: 'integer', description: 'type is type integer', maxLength: 10},
@@ -235,19 +250,23 @@ const updateRealEstateSchema = {
       maxLength: 10,
     },
     branch_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'branch_id is integer',
     },
     sale_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'sale_id is integer',
     },
     category_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'category_id is integer',
     },
     creator_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'creator_id is integer (users.id)',
     },
     category_title: {
@@ -256,11 +275,13 @@ const updateRealEstateSchema = {
       maxLength: 250,
     },
     real_estate_status_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'real_estate_status_id is integer',
     },
     province_city_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'province_city_id is type integer',
       maxLength: 10,
     },
@@ -270,7 +291,8 @@ const updateRealEstateSchema = {
       maxLength: 250,
     },
     district_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'district_id is type integer',
       maxLength: 10,
     },
@@ -280,7 +302,8 @@ const updateRealEstateSchema = {
       maxLength: 250,
     },
     street_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'street_id is type integer',
       maxLength: 10,
     },
@@ -290,7 +313,8 @@ const updateRealEstateSchema = {
       maxLength: 250,
     },
     ward_id: {
-      type: 'integer',
+      type: ['integer', 'string'],
+      pattern: '^[0-9]+$',
       description: 'ward_id is type integer',
       maxLength: 10,
     },
