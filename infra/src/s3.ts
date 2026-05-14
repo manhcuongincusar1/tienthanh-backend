@@ -28,8 +28,9 @@ new aws.s3.BucketCorsConfigurationV2("app-data-cors", {
   corsRules: [{
     allowedOrigins: [
       pulumi.interpolate`https://${feDomain}`,
-      // Dev (optional) — bỏ comment khi cần test từ localhost.
-      // "http://localhost:8000",
+      // Local dev — FE UMI default port. Per DECISIONS D1 (presigned PUT flow),
+      // FE PUT trực tiếp S3 → cần CORS allowlist cho localhost khi dev local.
+      "http://localhost:8000",
     ],
     allowedMethods: ["PUT", "POST", "GET", "HEAD"],
     allowedHeaders: ["*"],

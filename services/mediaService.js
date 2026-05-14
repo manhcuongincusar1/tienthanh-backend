@@ -18,9 +18,17 @@ class MediaService extends BaseService {
 
   findByS3Key = async (s3_key) => mediaRepo.findByS3Key(s3_key);
 
-  // FE construct URL trực tiếp từ s3_key — BE chỉ giúp khi response API legacy.
-  // Variant per DECISIONS D6: chỉ `thumbnail` + `large`.
-  cdnUrl = (s3_key, size = 'large') => `${CDN_BASE}/${size}/${s3_key}`;
+  // Construct CDN URL khớp CloudFront function rewrite (infra/src/cdn.ts).
+  // s3_key format: `uploads/(public|private)/YYYY/MM/DD/<rand>.<ext>`
+  // CF rewrite `/<size>/<baseKey>` → `/_resized/<vis>/<size>/<baseKey>.webp`
+  // Lambda output: `_resized/${vis}/${size}/${baseKey}.webp` (baseKey không có prefix `uploads/<vis>/` và không có ext)
+  // → URL phải = `${CDN}/${size}/<baseKey>` (strip prefix + ext)
+  cdnUrl = (s3_key, size = 'large') => {
+    if (!s3_key) return null;
+    const m = String(s3_key).match(/^uploads\/(?:public|private)\/(.+)\.[^.]+$/);
+    const baseKey = m ? m[1] : s3_key;
+    return `${CDN_BASE}/${size}/${baseKey}`;
+  };
 
   // Public response shape — fill cả URL mới + cdn_path legacy.
   toPublicShape = (row) => {

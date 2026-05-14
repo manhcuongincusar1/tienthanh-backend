@@ -86,17 +86,23 @@ router.post('/presign', auth.authenticateToken, async (req, res) => {
       mime,
       original_size: size || null,
       visibility: finalVisibility,
-      creator_id: req.auth?.user_id,
+      creator_id: req.auth?.id,
     });
+
+    // cdn_path chỉ available cho public (CDN serve qua CF function rewrite không cần signed URL).
+    // Private file: FE phải gọi GET /_api/file/url/:id để lấy signed URL.
+    const cdn_path = finalVisibility === 'public' ? mediaService.cdnUrl(s3_key, 'large') : null;
 
     RestAPI.success(res, {
       media_id: row ? Number(row.id) : null,
+      id: row ? Number(row.id) : null,
       s3_key,
       upload_url: url,
       method: 'PUT',
       expires_in: PRESIGN_TTL_SEC,
       visibility: finalVisibility,
       mime,
+      cdn_path,
     });
   } catch (err) {
     console.error('presign_error', err);
@@ -130,7 +136,7 @@ router.get('/url/:id', auth.authenticateToken, async (req, res) => {
       });
     }
 
-    const userId = req.auth?.user_id;
+    const userId = req.auth?.id;
     const roleId = req.auth?.role_id;
     const isOwner = Number(row.creator_id) === Number(userId);
     const isAdmin = roleId === 1;
@@ -183,7 +189,7 @@ router.get('/view/:id', auth.authenticateToken, async (req, res) => {
     }
 
     // Private: permission rule scope tối thiểu (owner OR super_admin).
-    const userId = req.auth?.user_id;
+    const userId = req.auth?.id;
     const roleId = req.auth?.role_id;
     const isOwner = Number(row.creator_id) === Number(userId);
     const isAdmin = roleId === 1;
