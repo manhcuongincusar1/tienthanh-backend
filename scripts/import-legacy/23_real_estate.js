@@ -1,8 +1,9 @@
 // 8,203 rows. The big one — 8 FKs + self-ref.
 // FK lookup:
 //   category_id → real_estate_category (id_map)
-//   creator_sale_id → sales (id_map)
-//   sale_id → sales (id_map) — 3,683 orphan, NULL khi miss
+//   creator_sale_id → users (id_map) — column tên gây hiểu nhầm, thực ra trỏ users.id (100% match).
+//                                       Sprint 6 ban đầu map sang sales → toàn bộ NULL, fix qua 34_creator_sale_id_backfill.js.
+//   sale_id → sales (id_map) — 3,683 orphan trong legacy (0 match anywhere), NULL khi miss.
 //   real_estate_status_id → real_estate_status (id_map)
 //   parent_real_estate_id → real_estate (id_map) — 2-pass self-ref
 //   broker_id → brokers (id_map) — 7 orphan, NULL
@@ -15,7 +16,7 @@ const idMap = require('./lib/idMap');
 
 run(__filename, async () => {
   // Warmup all parent tables
-  for (const t of ['real_estate_category', 'sales', 'real_estate_status',
+  for (const t of ['real_estate_category', 'sales', 'users', 'real_estate_status',
                    'brokers', 'broker_phones', 'customer_phones']) {
     await idMap.warmup(t);
   }
@@ -38,7 +39,7 @@ run(__filename, async () => {
       return {
         category_id: await lookupOrNull('real_estate_category', r.category_id, 'category_id'),
         title: r.title,
-        creator_sale_id: await lookupOrNull('sales', r.creator_sale_id, 'creator_sale_id'),
+        creator_sale_id: await lookupOrNull('users', r.creator_sale_id, 'creator_sale_id'),
         sale_id: await lookupOrNull('sales', r.sale_id, 'sale_id'),
         ward_id: r.ward_id,
         district_id: r.district_id,
