@@ -20,6 +20,17 @@ const handleBizError = (res, err) => {
   return RestAPI.serverError(res, 'Internal server error');
 };
 
+const normalizeBodyStatus = (status) => {
+  if (status === undefined) return undefined;
+  if (typeof status === 'boolean') return status ? Constants.STATUS_ENUM.ACTIVE : Constants.STATUS_ENUM.PENDING;
+  return Number(status);
+};
+
+const decorateDisplay = (row) => ({
+  ...row,
+  display_status: Number(row.status) === Constants.STATUS_ENUM.ACTIVE,
+});
+
 const getStreetList = async (req, res) => {
   try {
     const {data, total} = await streetService.getList(req.query);
@@ -27,7 +38,7 @@ const getStreetList = async (req, res) => {
     const referenced = await realEstateService.getStreetExist();
     const list = data.map((street) => {
       const isExist = referenced.find((item) => item.street_id === street.id);
-      return {...street, isDelete: !isExist};
+      return {...decorateDisplay(street), isDelete: !isExist};
     });
     return RestAPI.success(res, list, {total});
   } catch (err) {
@@ -38,8 +49,8 @@ const getStreetList = async (req, res) => {
 const getStreetListByWardId = async (req, res) => {
   try {
     const {ward_id} = req.params;
-    const {data, total} = await streetService.getList({ward_id});
-    return RestAPI.success(res, data, {total});
+    const {data, total} = await streetService.getList({ward_id, limit: 500});
+    return RestAPI.success(res, data.map(decorateDisplay), {total});
   } catch (err) {
     return handleBizError(res, err);
   }
@@ -47,9 +58,11 @@ const getStreetListByWardId = async (req, res) => {
 
 const detailStreet = async (req, res) => {
   try {
-    const row = await streetService.getDetail(req.params.id);
+    const row = await streetService.getDetail(req.params.id, {
+      languageCode: req.query.languageCode || 'vi',
+    });
     if (!row) return RestAPI.notFound(res, 'Street not found');
-    return RestAPI.success(res, row);
+    return RestAPI.success(res, decorateDisplay(row));
   } catch (err) {
     return handleBizError(res, err);
   }
@@ -57,8 +70,11 @@ const detailStreet = async (req, res) => {
 
 const createStreet = async (req, res) => {
   try {
-    const row = await streetService.create(req.body);
-    return RestAPI.success(res, row);
+    const row = await streetService.create({
+      ...req.body,
+      status: normalizeBodyStatus(req.body.status),
+    });
+    return RestAPI.success(res, decorateDisplay(row));
   } catch (err) {
     return handleBizError(res, err);
   }
@@ -66,8 +82,11 @@ const createStreet = async (req, res) => {
 
 const updateStreet = async (req, res) => {
   try {
-    const row = await streetService.update(req.params.id, req.body);
-    return RestAPI.success(res, row);
+    const row = await streetService.update(req.params.id, {
+      ...req.body,
+      status: normalizeBodyStatus(req.body.status),
+    });
+    return RestAPI.success(res, decorateDisplay(row));
   } catch (err) {
     return handleBizError(res, err);
   }
@@ -75,8 +94,8 @@ const updateStreet = async (req, res) => {
 
 const activeDeactiveStreet = async (req, res) => {
   try {
-    const row = await streetService.setActive(req.params.id, req.body.status);
-    return RestAPI.success(res, row);
+    const row = await streetService.setActive(req.params.id, normalizeBodyStatus(req.body.status));
+    return RestAPI.success(res, decorateDisplay(row));
   } catch (err) {
     return handleBizError(res, err);
   }
@@ -94,7 +113,7 @@ const deleteStreet = async (req, res) => {
 const checkCodeExistStreet = async (req, res) => {
   try {
     const exists = await streetService.codeExists(req.params.code);
-    return RestAPI.success(res, exists);
+    return RestAPI.success(res, {result: exists});
   } catch (err) {
     return handleBizError(res, err);
   }
