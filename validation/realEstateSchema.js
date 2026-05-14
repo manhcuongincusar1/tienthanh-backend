@@ -17,7 +17,7 @@ const realEstateFilterSchema = {
 const insertRealEstateSchema = {
   type: 'object',
   properties: {
-    creator_sale_id: {type: 'string', description: 'creator_sale_id is string'},
+    creator_sale_id: {type: 'integer', description: 'creator_sale_id is integer (users.id)'},
     address: {
       type: 'string',
       description: 'address is type string',
@@ -64,14 +64,12 @@ const insertRealEstateSchema = {
       maxLength: 1000,
     },
     sale_id: {
-      type: 'string',
-      description: 'sale_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'sale_id is integer (sales.id)',
     },
     category_id: {
-      type: 'string',
-      description: 'category_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'category_id is integer (real_estate_category.id)',
     },
     category_title: {
       type: 'string',
@@ -79,19 +77,16 @@ const insertRealEstateSchema = {
       maxLength: 250,
     },
     real_estate_status_id: {
-      type: 'string',
-      description: 'real_estate_status_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'real_estate_status_id is integer (real_estate_status.id)',
     },
     parent_real_estate_id: {
-      type: 'string',
-      description: 'parent_real_estate_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'parent_real_estate_id is integer (self-ref)',
     },
     branch_id: {
-      type: 'string',
-      description: 'branch_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'branch_id is integer (branches.id)',
     },
     province_city_id: {
       type: 'integer',
@@ -196,14 +191,12 @@ const checkDuplicateRealEstateSchema = {
       maxLength: 250,
     },
     real_estate_status_id: {
-      type: 'string',
-      description: 'real_estate_status_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'real_estate_status_id is integer',
     },
     real_estate_id: {
-      type: 'string',
-      description: 'real_estate_status_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'real_estate_id is integer',
     },
     type: {type: 'integer', description: 'type is type integer', maxLength: 10},
   },
@@ -242,24 +235,20 @@ const updateRealEstateSchema = {
       maxLength: 10,
     },
     branch_id: {
-      type: 'string',
-      description: 'branch_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'branch_id is integer',
     },
     sale_id: {
-      type: 'string',
-      description: 'sale_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'sale_id is integer',
     },
     category_id: {
-      type: 'string',
-      description: 'category_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'category_id is integer',
     },
     creator_id: {
-      type: 'string',
-      description: 'creator_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'creator_id is integer (users.id)',
     },
     category_title: {
       type: 'string',
@@ -267,9 +256,8 @@ const updateRealEstateSchema = {
       maxLength: 250,
     },
     real_estate_status_id: {
-      type: 'string',
-      description: 'real_estate_status_id is type string',
-      maxLength: 250,
+      type: 'integer',
+      description: 'real_estate_status_id is integer',
     },
     province_city_id: {
       type: 'integer',
@@ -344,7 +332,7 @@ const updateRealEstateSchema = {
 const getRealEstateByIdSchema = {
   type: 'object',
   properties: {
-    id: {type: 'string', description: 'id is type string', maxLength: 250},
+    id: {type: ['integer', 'string'], pattern: '^[0-9]+$', description: 'id is integer (accept stringified for path param)'},
   },
 };
 
@@ -385,9 +373,10 @@ const getListRealEstateReportSchema = {
     real_estate_status_ids: {
       type: 'array',
       items: {
-        type: 'string',
+        type: ['integer', 'string'],
+        pattern: '^[0-9]+$',
       },
-      description: 'real_estate_status_ids is type array string',
+      description: 'real_estate_status_ids is integer array (accept stringified from query string)',
       maxLength: 20,
     },
     province_city_ids: {
